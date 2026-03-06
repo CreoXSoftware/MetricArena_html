@@ -1021,8 +1021,8 @@
         <span class="legend-speed">Speed (km/h)</span>
       </div>
       <div class="split-actions">
-        <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save
-          Split</button>
+        <input type="text" id="split-name-input" placeholder="Split name…" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:160px;" />
+        <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save Split</button>
         <button class="btn" id="clear-sel-btn" style="display:none" onclick="clearSelection()">Clear</button>
         <span class="split-hint">Click and drag on the chart to select a time range</span>
       </div>
@@ -1031,6 +1031,14 @@
     <div class="section" id="splits-section" style="display:none">
       <div class="section-title"><span class="dot" style="background:var(--accent3)"></span> Saved Splits</div>
       <div class="splits-container" id="splits-container"></div>
+      <div id="combine-panel" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Combine Splits</div>
+        <div id="combine-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="combine-name-input" placeholder="Combined split name…" value="Full Game" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:200px;" />
+          <button class="btn btn-accent" onclick="combineSplits()">Create Combined Split</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1766,6 +1774,8 @@
         if (!isDragging) return;
         isDragging = false; selEnd = xToTime(e.clientX);
         if (Math.abs(selEnd - selStart) > 0.3) {
+          document.getElementById('split-name-input').style.display = 'inline-block';
+          document.getElementById('split-name-input').focus();
           document.getElementById('save-split-btn').style.display = 'inline-block';
           document.getElementById('clear-sel-btn').style.display = 'inline-block';
         } else clearSelection();
@@ -1775,6 +1785,7 @@
 
     function clearSelection() {
       document.getElementById('selection-overlay').style.display = 'none';
+      document.getElementById('split-name-input').style.display = 'none';
       document.getElementById('save-split-btn').style.display = 'none';
       document.getElementById('clear-sel-btn').style.display = 'none';
       selStart = null; selEnd = null;
@@ -1785,7 +1796,10 @@
       var tMin = Math.min(selStart, selEnd), tMax = Math.max(selStart, selEnd);
       var splitData = processedData.filter(function (d) { return d.t >= tMin && d.t <= tMax; });
       if (splitData.length < 5) return;
-      splits.push({ id: Date.now(), name: 'Split ' + (splits.length + 1), tStart: tMin, tEnd: tMax, metrics: computeMetrics(splitData) });
+      var nameInput = document.getElementById('split-name-input');
+      var name = nameInput.value.trim() || ('Split ' + (splits.length + 1));
+      nameInput.value = '';
+      splits.push({ id: Date.now(), name: name, tStart: tMin, tEnd: tMax, metrics: computeMetrics(splitData) });
       renderSplits();
       clearSelection();
     }
@@ -1797,10 +1811,14 @@
       section.style.display = 'block';
       container.innerHTML = splits.map(function (s) {
         var m = s.metrics;
-        return '<div class="split-card"><div class="split-header">' +
-          '<span class="split-name">' + s.name + '</span><div>' +
+        var badge = s.isCombined
+          ? '<span style="font-size:10px;font-weight:600;background:rgba(0,184,255,0.15);color:var(--accent2);border:1px solid var(--accent2);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle;">COMBINED</span>'
+          : '';
+        return '<div class="split-card" style="' + (s.isCombined ? 'border-color:var(--accent2);' : '') + '"><div class="split-header">' +
+          '<span class="split-name">' + s.name + badge + '</span><div>' +
           '<span class="split-time">' + formatDuration(s.tStart) + ' \u2192 ' + formatDuration(s.tEnd) + '</span> ' +
           '<button class="delete-split" onclick="deleteSplit(' + s.id + ')">\u2715</button></div></div>' +
+          (s.isCombined ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">From: ' + s.sourceSplits.join(', ') + '</div>' : '') +
           '<div class="split-metrics">' +
           sm('Max Speed', m.maxSpeed.toFixed(1) + ' km/h') +
           sm('Avg Speed', m.avgSpeed.toFixed(1) + ' km/h') +
@@ -1817,6 +1835,20 @@
           sm('Player Load', m.playerLoad.toFixed(0) + ' au') +
           '</div></div>';
       }).join('');
+
+      // Rebuild combine-panel checkboxes from base (non-combined) splits only
+      var baseSplits = splits.filter(function (s) { return !s.isCombined; });
+      var combinePanel = document.getElementById('combine-panel');
+      var checkboxes = document.getElementById('combine-checkboxes');
+      if (baseSplits.length >= 2) {
+        combinePanel.style.display = 'block';
+        checkboxes.innerHTML = baseSplits.map(function (s) {
+          return '<label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;">' +
+            '<input type="checkbox" value="' + s.id + '" style="accent-color:var(--accent);cursor:pointer;" /> ' + s.name + '</label>';
+        }).join('');
+      } else {
+        combinePanel.style.display = 'none';
+      }
     }
     function sm(label, value) {
       return '<div class="split-metric"><span class="sm-label">' + label + '</span><br><span class="sm-value">' + value + '</span></div>';
@@ -1824,6 +1856,66 @@
 
     function deleteSplit(id) {
       splits = splits.filter(function (s) { return s.id !== id; });
+      renderSplits();
+    }
+
+    function aggregateMetrics(metricsArr) {
+      var valid = metricsArr.filter(function (m) { return m; });
+      if (!valid.length) return null;
+      var totalMovingTime = valid.reduce(function (s, m) { return s + m.timeMoving; }, 0);
+      var combined = {
+        maxSpeed:   Math.max.apply(null, valid.map(function (m) { return m.maxSpeed; })),
+        maxSpeedMs: Math.max.apply(null, valid.map(function (m) { return m.maxSpeedMs; })),
+        maxAccel:   Math.max.apply(null, valid.map(function (m) { return m.maxAccel; })),
+        maxDecel:   Math.max.apply(null, valid.map(function (m) { return m.maxDecel; })),
+        peakForce:  Math.max.apply(null, valid.map(function (m) { return m.peakForce; })),
+        peakPower:  Math.max.apply(null, valid.map(function (m) { return m.peakPower; })),
+        distToMax:  Math.max.apply(null, valid.map(function (m) { return m.distToMax; })),
+        timeToMax:  Math.max.apply(null, valid.map(function (m) { return m.timeToMax; })),
+        bmi:        valid[0].bmi,
+        totalDist:      valid.reduce(function (s, m) { return s + m.totalDist; }, 0),
+        duration:       valid.reduce(function (s, m) { return s + m.duration; }, 0),
+        sprints:        valid.reduce(function (s, m) { return s + m.sprints; }, 0),
+        runs:           valid.reduce(function (s, m) { return s + m.runs; }, 0),
+        impacts:        valid.reduce(function (s, m) { return s + m.impacts; }, 0),
+        work:           valid.reduce(function (s, m) { return s + m.work; }, 0),
+        totalCal:       valid.reduce(function (s, m) { return s + m.totalCal; }, 0),
+        playerLoad:     valid.reduce(function (s, m) { return s + m.playerLoad; }, 0),
+        sprintDist:     valid.reduce(function (s, m) { return s + m.sprintDist; }, 0),
+        sprintTime:     valid.reduce(function (s, m) { return s + m.sprintTime; }, 0),
+        highSpeedDist:  valid.reduce(function (s, m) { return s + m.highSpeedDist; }, 0),
+        timeMoving:     valid.reduce(function (s, m) { return s + m.timeMoving; }, 0),
+        timeStationary: valid.reduce(function (s, m) { return s + m.timeStationary; }, 0),
+        zones: [0, 1, 2, 3, 4].map(function (i) { return valid.reduce(function (s, m) { return s + m.zones[i]; }, 0); }),
+      };
+      // Weighted averages by moving time (avoids gap inflating the average)
+      combined.avgSpeed = totalMovingTime > 0 ? valid.reduce(function (s, m) { return s + m.avgSpeed * m.timeMoving; }, 0) / totalMovingTime : 0;
+      combined.avgAccel = totalMovingTime > 0 ? valid.reduce(function (s, m) { return s + m.avgAccel * m.timeMoving; }, 0) / totalMovingTime : 0;
+      combined.avgForce = totalMovingTime > 0 ? valid.reduce(function (s, m) { return s + m.avgForce * m.timeMoving; }, 0) / totalMovingTime : 0;
+      combined.avgPower = totalMovingTime > 0 ? valid.reduce(function (s, m) { return s + m.avgPower * m.timeMoving; }, 0) / totalMovingTime : 0;
+      combined.plPerMin = combined.duration > 0 ? combined.playerLoad / (combined.duration / 60) : 0;
+      combined.metabolicPower = combined.duration > 0 ? (combined.work / combined.duration) / getProfile().weight : 0;
+      return combined;
+    }
+
+    function combineSplits() {
+      var checked = Array.from(document.querySelectorAll('#combine-checkboxes input[type="checkbox"]:checked'));
+      if (checked.length < 2) { alert('Select at least 2 splits to combine.'); return; }
+      var name = document.getElementById('combine-name-input').value.trim();
+      if (!name) { alert('Enter a name for the combined split.'); return; }
+      var ids = checked.map(function (cb) { return parseInt(cb.value, 10); });
+      var selected = splits.filter(function (s) { return ids.indexOf(s.id) !== -1; });
+      var tMin = Math.min.apply(null, selected.map(function (s) { return s.tStart; }));
+      var tMax = Math.max.apply(null, selected.map(function (s) { return s.tEnd; }));
+      splits.push({
+        id: Date.now(),
+        name: name,
+        tStart: tMin,
+        tEnd: tMax,
+        isCombined: true,
+        sourceSplits: selected.map(function (s) { return s.name; }),
+        metrics: aggregateMetrics(selected.map(function (s) { return s.metrics; }))
+      });
       renderSplits();
     }
 
