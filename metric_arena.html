@@ -688,6 +688,7 @@
     .split-card .split-name {
       font-weight: 600;
       font-size: 14px;
+      cursor: pointer;
     }
 
     .split-card .split-time {
@@ -1022,6 +1023,7 @@
       </div>
       <div class="split-actions">
         <input type="text" id="split-name-input" placeholder="Split name…"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();saveSplit();}"
           style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:160px;" />
         <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save
           Split</button>
@@ -1062,6 +1064,10 @@
     var selStart = null, selEnd = null;
     var isDragging = false;
     var accelChartInfo = null;
+    var speedChartInfo = null;
+    var chartView = { tStart: 0, tEnd: 0 };
+    var speedZoomReady = false;
+    var accelZoomReady = false;
 
     // ========== ATHLETE PROFILE ==========
     function getProfile() {
@@ -1194,6 +1200,8 @@
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('upload-screen').style.display = 'flex';
       splits = [];
+      chartView.tStart = 0; chartView.tEnd = 0;
+      speedZoomReady = false; accelZoomReady = false;
       fileInput.value = '';
     }
 
@@ -1581,9 +1589,14 @@
       // Speed zone bar
       renderSpeedZones(m);
 
+      if (chartView.tEnd === 0) {
+        chartView.tStart = 0;
+        chartView.tEnd = processedData[processedData.length - 1].t;
+      }
       renderMap();
       renderAccelChart();
       renderSpeedChart();
+      initChartZoom();
     }
 
     function renderSpeedZones(m) {
@@ -1682,10 +1695,16 @@
       var pad = { top: 20, right: 20, bottom: 40, left: 50 };
       var cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
 
-      var speeds = processedData.map(function (d) { return d.speed; });
-      var times = processedData.map(function (d) { return d.t; });
-      var maxS = Math.max.apply(null, speeds) * 1.1 || 1;
-      var maxT = times[times.length - 1] || 1;
+      var tStart = chartView.tStart, tEnd = chartView.tEnd;
+      var tRange = tEnd - tStart;
+      speedChartInfo = { pad: pad, cW: cW, cH: cH, tStart: tStart, tEnd: tEnd, W: W, H: H };
+
+      // Only data in the visible window
+      var visible = processedData.filter(function (d) { return d.t >= tStart && d.t <= tEnd; });
+      if (!visible.length) visible = processedData;
+      var maxS = Math.max.apply(null, visible.map(function (d) { return d.speed; })) * 1.1 || 1;
+
+      function tToX(t) { return pad.left + ((t - tStart) / tRange) * cW; }
 
       ctx.strokeStyle = '#1a1a26'; ctx.lineWidth = 1;
       for (var i = 0; i <= 5; i++) {
@@ -1693,7 +1712,7 @@
         ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
       }
 
-      // Draw speed zone backgrounds
+      // Speed zone backgrounds
       var T = thresholds;
       var zoneBounds = [0, T.zone1, T.zone2, T.zone3, T.zone4, maxS * 1.2];
       var zoneColors = ['rgba(59,130,246,0.06)', 'rgba(34,197,94,0.06)', 'rgba(234,179,8,0.06)', 'rgba(249,115,22,0.06)', 'rgba(239,68,68,0.06)'];
@@ -1706,42 +1725,50 @@
         ctx.fillRect(pad.left, yTop, cW, yBot - yTop);
       }
 
-      ctx.beginPath(); ctx.moveTo(pad.left, pad.top + cH);
-      for (var i = 0; i < processedData.length; i++) {
-        ctx.lineTo(pad.left + (times[i] / maxT) * cW, pad.top + cH - (speeds[i] / maxS) * cH);
+      // Clip to chart area so lines don't spill outside
+      ctx.save(); ctx.beginPath(); ctx.rect(pad.left, pad.top, cW, cH); ctx.clip();
+
+      ctx.beginPath(); ctx.moveTo(tToX(visible[0].t), pad.top + cH);
+      for (var i = 0; i < visible.length; i++) {
+        ctx.lineTo(tToX(visible[i].t), pad.top + cH - (visible[i].speed / maxS) * cH);
       }
-      ctx.lineTo(pad.left + cW, pad.top + cH); ctx.closePath();
+      ctx.lineTo(tToX(visible[visible.length - 1].t), pad.top + cH); ctx.closePath();
       var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
       grad.addColorStop(0, 'rgba(0,184,255,0.3)'); grad.addColorStop(1, 'rgba(0,184,255,0.02)');
       ctx.fillStyle = grad; ctx.fill();
 
       ctx.beginPath(); ctx.strokeStyle = '#00b8ff'; ctx.lineWidth = 2;
-      for (var i = 0; i < processedData.length; i++) {
-        var x = pad.left + (times[i] / maxT) * cW, y = pad.top + cH - (speeds[i] / maxS) * cH;
+      for (var i = 0; i < visible.length; i++) {
+        var x = tToX(visible[i].t), y = pad.top + cH - (visible[i].speed / maxS) * cH;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();
 
       // Sprint highlight
       ctx.fillStyle = 'rgba(255,107,107,0.1)';
-      var inSp = false, spStart = 0;
-      for (var i = 0; i < processedData.length; i++) {
-        if (speeds[i] > T.sprintSpeed && !inSp) { inSp = true; spStart = pad.left + (times[i] / maxT) * cW; }
-        if ((speeds[i] < T.sprintHyst || i === processedData.length - 1) && inSp) {
-          ctx.fillRect(spStart, pad.top, pad.left + (times[i] / maxT) * cW - spStart, cH);
+      var inSp = false, spStartX = 0;
+      for (var i = 0; i < visible.length; i++) {
+        if (visible[i].speed > T.sprintSpeed && !inSp) { inSp = true; spStartX = tToX(visible[i].t); }
+        if ((visible[i].speed < T.sprintHyst || i === visible.length - 1) && inSp) {
+          ctx.fillRect(spStartX, pad.top, tToX(visible[i].t) - spStartX, cH);
           inSp = false;
         }
       }
+      ctx.restore();
 
+      // Y-axis labels
       ctx.fillStyle = '#8888a0'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'right';
       for (var i = 0; i <= 5; i++) ctx.fillText((maxS / 5 * (5 - i)).toFixed(0), pad.left - 8, pad.top + (cH / 5) * i + 4);
+      // X-axis time labels
       ctx.textAlign = 'center';
       for (var i = 0; i <= 4; i++) {
-        var t = (maxT / 4) * i;
-        ctx.fillText(formatDuration(t), pad.left + (t / maxT) * cW, H - 10);
+        var t = tStart + (tRange / 4) * i;
+        ctx.fillText(formatDuration(t), tToX(t), H - 10);
       }
-      ctx.font = '12px DM Sans, sans-serif';
-      ctx.fillText('Speed (km/h) \u2014 zone backgrounds shown', pad.left + cW / 2, H - 2);
+      ctx.font = '11px DM Sans, sans-serif';
+      ctx.fillStyle = '#555570';
+      ctx.textAlign = 'right';
+      ctx.fillText('scroll to zoom  \u2022  dbl-click to reset', W - pad.right, 14);
     }
 
     function renderAccelChart() {
@@ -1752,17 +1779,20 @@
       var pad = { top: 20, right: 50, bottom: 30, left: 50 };
       var cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
 
-      var step = Math.max(1, Math.floor(processedData.length / 800));
-      var sampled = processedData.filter(function (_, i) { return i % step === 0; });
+      var tStart = chartView.tStart, tEnd = chartView.tEnd;
+      var tRange = tEnd - tStart;
+      accelChartInfo = { pad: pad, cW: cW, cH: cH, tStart: tStart, tEnd: tEnd, W: W, H: H };
 
-      var accels = sampled.map(function (d) { return d.linMag; });
-      var speeds = sampled.map(function (d) { return d.speed; });
-      var times = sampled.map(function (d) { return d.t; });
-      var maxA = Math.min(Math.max.apply(null, accels) * 1.1, 60) || 1;
-      var maxS = Math.max.apply(null, speeds) * 1.1 || 1;
-      var maxT = times[times.length - 1] || 1;
+      function tToX(t) { return pad.left + ((t - tStart) / tRange) * cW; }
 
-      accelChartInfo = { pad: pad, cW: cW, cH: cH, maxT: maxT, W: W, H: H };
+      // Filter to visible window then subsample
+      var inView = processedData.filter(function (d) { return d.t >= tStart && d.t <= tEnd; });
+      if (!inView.length) inView = processedData;
+      var step = Math.max(1, Math.floor(inView.length / 800));
+      var sampled = inView.filter(function (_, i) { return i % step === 0; });
+
+      var maxA = Math.min(Math.max.apply(null, inView.map(function (d) { return d.linMag; })) * 1.1, 60) || 1;
+      var maxS = Math.max.apply(null, inView.map(function (d) { return d.speed; })) * 1.1 || 1;
 
       ctx.strokeStyle = '#1a1a26'; ctx.lineWidth = 1;
       for (var i = 0; i <= 5; i++) {
@@ -1782,36 +1812,41 @@
         ctx.fillText('impact ' + T.impactThresh + ' m/s\u00B2', pad.left + 4, impactY - 4);
       }
 
-      ctx.beginPath(); ctx.moveTo(pad.left, pad.top + cH);
+      ctx.save(); ctx.beginPath(); ctx.rect(pad.left, pad.top, cW, cH); ctx.clip();
+
+      ctx.beginPath(); ctx.moveTo(tToX(sampled[0].t), pad.top + cH);
       for (var i = 0; i < sampled.length; i++)
-        ctx.lineTo(pad.left + (times[i] / maxT) * cW, pad.top + cH - (Math.min(accels[i], maxA) / maxA) * cH);
-      ctx.lineTo(pad.left + (times[times.length - 1] / maxT) * cW, pad.top + cH); ctx.closePath();
+        ctx.lineTo(tToX(sampled[i].t), pad.top + cH - (Math.min(sampled[i].linMag, maxA) / maxA) * cH);
+      ctx.lineTo(tToX(sampled[sampled.length - 1].t), pad.top + cH); ctx.closePath();
       var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
       grad.addColorStop(0, 'rgba(0,229,160,0.25)'); grad.addColorStop(1, 'rgba(0,229,160,0.01)');
       ctx.fillStyle = grad; ctx.fill();
 
       ctx.beginPath(); ctx.strokeStyle = '#00e5a0'; ctx.lineWidth = 1.5;
       for (var i = 0; i < sampled.length; i++) {
-        var x = pad.left + (times[i] / maxT) * cW, y = pad.top + cH - (Math.min(accels[i], maxA) / maxA) * cH;
+        var x = tToX(sampled[i].t), y = pad.top + cH - (Math.min(sampled[i].linMag, maxA) / maxA) * cH;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();
 
       ctx.beginPath(); ctx.strokeStyle = '#00b8ff80'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
       for (var i = 0; i < sampled.length; i++) {
-        var x = pad.left + (times[i] / maxT) * cW, y = pad.top + cH - (speeds[i] / maxS) * cH;
+        var x = tToX(sampled[i].t), y = pad.top + cH - (sampled[i].speed / maxS) * cH;
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
 
+      // Y-axis labels
       ctx.fillStyle = '#00e5a0'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'right';
       for (var i = 0; i <= 5; i++) ctx.fillText((maxA / 5 * (5 - i)).toFixed(0), pad.left - 8, pad.top + (cH / 5) * i + 4);
       ctx.fillStyle = '#00b8ff'; ctx.textAlign = 'left';
       for (var i = 0; i <= 5; i++) ctx.fillText((maxS / 5 * (5 - i)).toFixed(0), W - pad.right + 8, pad.top + (cH / 5) * i + 4);
+      // X-axis time labels
       ctx.fillStyle = '#8888a0'; ctx.textAlign = 'center';
       for (var i = 0; i <= 4; i++) {
-        var t = (maxT / 4) * i;
-        ctx.fillText(formatDuration(t), pad.left + (t / maxT) * cW, H - 6);
+        var t = tStart + (tRange / 4) * i;
+        ctx.fillText(formatDuration(t), tToX(t), H - 6);
       }
       setupChartSelection();
     }
@@ -1824,11 +1859,13 @@
       function xToTime(clientX) {
         var rect = canvas.getBoundingClientRect();
         var x = clientX - rect.left;
-        var t = ((x - accelChartInfo.pad.left) / accelChartInfo.cW) * accelChartInfo.maxT;
-        return Math.max(0, Math.min(accelChartInfo.maxT, t));
+        var ai = accelChartInfo;
+        var t = ai.tStart + ((x - ai.pad.left) / ai.cW) * (ai.tEnd - ai.tStart);
+        return Math.max(ai.tStart, Math.min(ai.tEnd, t));
       }
       function timeToX(t) {
-        return accelChartInfo.pad.left + (t / accelChartInfo.maxT) * accelChartInfo.cW;
+        var ai = accelChartInfo;
+        return ai.pad.left + ((t - ai.tStart) / (ai.tEnd - ai.tStart)) * ai.cW;
       }
 
       canvas.onmousedown = function (e) {
@@ -1886,7 +1923,7 @@
           ? '<span style="font-size:10px;font-weight:600;background:rgba(0,184,255,0.15);color:var(--accent2);border:1px solid var(--accent2);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle;">COMBINED</span>'
           : '';
         return '<div class="split-card" style="' + (s.isCombined ? 'border-color:var(--accent2);' : '') + '"><div class="split-header">' +
-          '<span class="split-name">' + s.name + badge + '</span><div>' +
+          '<span class="split-name" title="Click to rename" onclick="startRenameSplit(' + s.id + ', this, event)">' + s.name + '</span>' + badge + '<div>' +
           '<span class="split-time">' + formatDuration(s.tStart) + ' \u2192 ' + formatDuration(s.tEnd) + '</span> ' +
           '<button class="delete-split" onclick="deleteSplit(' + s.id + ')">\u2715</button></div></div>' +
           (s.isCombined ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">From: ' + s.sourceSplits.join(', ') + '</div>' : '') +
@@ -1923,6 +1960,50 @@
     }
     function sm(label, value) {
       return '<div class="split-metric"><span class="sm-label">' + label + '</span><br><span class="sm-value">' + value + '</span></div>';
+    }
+
+    function startRenameSplit(id, nameEl, event) {
+      if (event) event.stopPropagation();
+      var split = splits.find(function (s) { return s.id === id; });
+      if (!split || nameEl.querySelector('input')) return;
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = split.name;
+      input.style.width = '160px';
+      input.style.background = 'var(--surface2)';
+      input.style.border = '1px solid var(--accent)';
+      input.style.borderRadius = '6px';
+      input.style.padding = '2px 8px';
+      input.style.color = 'var(--text)';
+      input.style.fontFamily = 'inherit';
+      input.style.fontSize = '14px';
+      input.style.fontWeight = '700';
+      input.style.outline = 'none';
+
+      nameEl.textContent = '';
+      nameEl.appendChild(input);
+      input.focus();
+      input.select();
+
+      function commitRename() {
+        var nextName = input.value.trim();
+        split.name = nextName || split.name;
+        renderSplits();
+      }
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitRename();
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          renderSplits();
+        }
+      });
+
+      input.addEventListener('blur', commitRename);
     }
 
     function deleteSplit(id) {
@@ -1988,6 +2069,61 @@
         metrics: aggregateMetrics(selected.map(function (s) { return s.metrics; }))
       });
       renderSplits();
+    }
+
+    // ========== CHART ZOOM ==========
+    function applyZoom(cursorTime, delta) {
+      var totalDur = processedData[processedData.length - 1].t;
+      var range = chartView.tEnd - chartView.tStart;
+      var factor = delta > 0 ? 1.18 : 0.85;
+      var newRange = Math.max(5, Math.min(totalDur, range * factor));
+      var ratio = range > 0 ? (cursorTime - chartView.tStart) / range : 0.5;
+      chartView.tStart = Math.max(0, cursorTime - ratio * newRange);
+      chartView.tEnd = Math.min(totalDur, chartView.tStart + newRange);
+      if (chartView.tEnd - chartView.tStart < newRange)
+        chartView.tStart = Math.max(0, chartView.tEnd - newRange);
+      clearSelection();
+      renderAccelChart();
+      renderSpeedChart();
+    }
+
+    function resetZoom() {
+      chartView.tStart = 0;
+      chartView.tEnd = processedData[processedData.length - 1].t;
+      clearSelection();
+      renderAccelChart();
+      renderSpeedChart();
+    }
+
+    function initChartZoom() {
+      var speedCanvas = document.getElementById('speed-chart');
+      var accelCanvas = document.getElementById('accel-chart');
+      if (!speedZoomReady) {
+        speedCanvas.addEventListener('wheel', function (e) {
+          e.preventDefault();
+          var rect = speedCanvas.getBoundingClientRect();
+          var x = e.clientX - rect.left;
+          var si = speedChartInfo;
+          if (!si) return;
+          var t = si.tStart + ((x - si.pad.left) / si.cW) * (si.tEnd - si.tStart);
+          applyZoom(Math.max(si.tStart, Math.min(si.tEnd, t)), e.deltaY);
+        }, { passive: false });
+        speedCanvas.addEventListener('dblclick', resetZoom);
+        speedZoomReady = true;
+      }
+      if (!accelZoomReady) {
+        accelCanvas.addEventListener('wheel', function (e) {
+          e.preventDefault();
+          var rect = accelCanvas.getBoundingClientRect();
+          var x = e.clientX - rect.left;
+          var ai = accelChartInfo;
+          if (!ai) return;
+          var t = ai.tStart + ((x - ai.pad.left) / ai.cW) * (ai.tEnd - ai.tStart);
+          applyZoom(Math.max(ai.tStart, Math.min(ai.tEnd, t)), e.deltaY);
+        }, { passive: false });
+        accelCanvas.addEventListener('dblclick', resetZoom);
+        accelZoomReady = true;
+      }
     }
 
     // ========== EXPORT ==========
