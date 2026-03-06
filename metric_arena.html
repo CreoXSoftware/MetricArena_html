@@ -864,8 +864,8 @@
     <div class="upload-box" id="upload-box">
       <div class="upload-icon">📡</div>
       <h1>Load Session</h1>
-      <p>Drop your fitness tracker CSV file here<br>or click to browse</p>
-      <input type="file" id="file-input" accept=".csv">
+      <p>Drop your CSV or binary (.bin) session file here<br>or click to browse</p>
+      <input type="file" id="file-input" accept=".csv,.bin">
     </div>
 
     <div class="profile-card">
@@ -1021,8 +1021,10 @@
         <span class="legend-speed">Speed (km/h)</span>
       </div>
       <div class="split-actions">
-        <input type="text" id="split-name-input" placeholder="Split name…" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:160px;" />
-        <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save Split</button>
+        <input type="text" id="split-name-input" placeholder="Split name…"
+          style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:160px;" />
+        <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save
+          Split</button>
         <button class="btn" id="clear-sel-btn" style="display:none" onclick="clearSelection()">Clear</button>
         <span class="split-hint">Click and drag on the chart to select a time range</span>
       </div>
@@ -1032,10 +1034,13 @@
       <div class="section-title"><span class="dot" style="background:var(--accent3)"></span> Saved Splits</div>
       <div class="splits-container" id="splits-container"></div>
       <div id="combine-panel" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Combine Splits</div>
+        <div
+          style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">
+          Combine Splits</div>
         <div id="combine-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input type="text" id="combine-name-input" placeholder="Combined split name…" value="Full Game" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:200px;" />
+          <input type="text" id="combine-name-input" placeholder="Combined split name…" value="Full Game"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:200px;" />
           <button class="btn btn-accent" onclick="combineSplits()">Create Combined Split</button>
         </div>
       </div>
@@ -1143,13 +1148,24 @@
     fileInput.addEventListener('change', function (e) { if (e.target.files.length) handleFile(e.target.files[0]); });
 
     function handleFile(file) {
+      var isBinary = /\.bin$/i.test(file.name);
+      var binVersion = 0;
+      if (isBinary) {
+        var vm = file.name.match(/_v(\d+)\.bin$/i);
+        if (vm) binVersion = parseInt(vm[1], 10);
+      }
+
       document.getElementById('upload-screen').style.display = 'none';
       document.getElementById('loading').style.display = 'block';
       var reader = new FileReader();
       reader.onload = function (e) {
         setTimeout(function () {
           try {
-            parseCSV(e.target.result);
+            if (isBinary) {
+              parseBinary(e.target.result, binVersion);
+            } else {
+              parseCSV(e.target.result);
+            }
             processSession();
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
@@ -1167,7 +1183,11 @@
           }
         }, 50);
       };
-      reader.readAsText(file);
+      if (isBinary) {
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.readAsText(file);
+      }
     }
 
     function showUpload() {
@@ -1175,6 +1195,57 @@
       document.getElementById('upload-screen').style.display = 'flex';
       splits = [];
       fileInput.value = '';
+    }
+
+    // ========== BINARY PARSING ==========
+    // v1: <I H5BH ff H fff fff>  → 47 bytes/record  (speed = uint16 × 0.1)
+    // v0: <I H5BH fff fff fff fff> → 61 bytes/record  (speed = float, 3rd fff = filtered accel, ignored)
+    function parseBinary(buffer, version) {
+      var view = new DataView(buffer);
+      var recSize = version === 1 ? 47 : 61;
+      var numRecs = Math.floor(buffer.byteLength / recSize);
+      if (numRecs === 0) throw new Error('No records found in binary file (version ' + version + ', record size ' + recSize + ' B)');
+
+      sessionData = [];
+      for (var i = 0; i < numRecs; i++) {
+        var b = i * recSize;
+        var row = {
+          kernelTick: view.getUint32(b, true),   // offset 0  – 4 B
+          year: view.getUint16(b + 4, true),   // offset 4  – 2 B
+          month: view.getUint8(b + 6),   // offset 6  – 1 B
+          day: view.getUint8(b + 7),   // offset 7  – 1 B
+          hour: view.getUint8(b + 8),   // offset 8  – 1 B
+          minute: view.getUint8(b + 9),   // offset 9  – 1 B
+          second: view.getUint8(b + 10),   // offset 10 – 1 B
+          millisecond: view.getUint16(b + 11, true),   // offset 11 – 2 B
+          latitude: view.getFloat32(b + 13, true),  // offset 13 – 4 B
+          longitude: view.getFloat32(b + 17, true),  // offset 17 – 4 B
+        };
+
+        if (version === 1) {
+          // speed stored as uint16 × 10 → divide by 10
+          row.speed_kph = view.getUint16(b + 21, true) / 10; // offset 21 – 2 B
+          row.accel_x = view.getFloat32(b + 23, true);     // offset 23 – 4 B
+          row.accel_y = view.getFloat32(b + 27, true);     // offset 27 – 4 B
+          row.accel_z = view.getFloat32(b + 31, true);     // offset 31 – 4 B
+          row.gyro_x = view.getFloat32(b + 35, true);     // offset 35 – 4 B
+          row.gyro_y = view.getFloat32(b + 39, true);     // offset 39 – 4 B
+          row.gyro_z = view.getFloat32(b + 43, true);     // offset 43 – 4 B
+        } else {
+          // version 0: speed is a plain float
+          row.speed_kph = view.getFloat32(b + 21, true);     // offset 21 – 4 B
+          row.accel_x = view.getFloat32(b + 25, true);     // offset 25 – 4 B
+          row.accel_y = view.getFloat32(b + 29, true);     // offset 29 – 4 B
+          row.accel_z = view.getFloat32(b + 33, true);     // offset 33 – 4 B
+          row.gyro_x = view.getFloat32(b + 37, true);     // offset 37 – 4 B
+          row.gyro_y = view.getFloat32(b + 41, true);     // offset 41 – 4 B
+          row.gyro_z = view.getFloat32(b + 45, true);     // offset 45 – 4 B
+          // filtered accel x/y/z – not used by the app
+        }
+
+        sessionData.push(row);
+      }
+      if (sessionData.length === 0) throw new Error('No valid records parsed from binary file');
     }
 
     // ========== CSV PARSING ==========
@@ -1864,27 +1935,27 @@
       if (!valid.length) return null;
       var totalMovingTime = valid.reduce(function (s, m) { return s + m.timeMoving; }, 0);
       var combined = {
-        maxSpeed:   Math.max.apply(null, valid.map(function (m) { return m.maxSpeed; })),
+        maxSpeed: Math.max.apply(null, valid.map(function (m) { return m.maxSpeed; })),
         maxSpeedMs: Math.max.apply(null, valid.map(function (m) { return m.maxSpeedMs; })),
-        maxAccel:   Math.max.apply(null, valid.map(function (m) { return m.maxAccel; })),
-        maxDecel:   Math.max.apply(null, valid.map(function (m) { return m.maxDecel; })),
-        peakForce:  Math.max.apply(null, valid.map(function (m) { return m.peakForce; })),
-        peakPower:  Math.max.apply(null, valid.map(function (m) { return m.peakPower; })),
-        distToMax:  Math.max.apply(null, valid.map(function (m) { return m.distToMax; })),
-        timeToMax:  Math.max.apply(null, valid.map(function (m) { return m.timeToMax; })),
-        bmi:        valid[0].bmi,
-        totalDist:      valid.reduce(function (s, m) { return s + m.totalDist; }, 0),
-        duration:       valid.reduce(function (s, m) { return s + m.duration; }, 0),
-        sprints:        valid.reduce(function (s, m) { return s + m.sprints; }, 0),
-        runs:           valid.reduce(function (s, m) { return s + m.runs; }, 0),
-        impacts:        valid.reduce(function (s, m) { return s + m.impacts; }, 0),
-        work:           valid.reduce(function (s, m) { return s + m.work; }, 0),
-        totalCal:       valid.reduce(function (s, m) { return s + m.totalCal; }, 0),
-        playerLoad:     valid.reduce(function (s, m) { return s + m.playerLoad; }, 0),
-        sprintDist:     valid.reduce(function (s, m) { return s + m.sprintDist; }, 0),
-        sprintTime:     valid.reduce(function (s, m) { return s + m.sprintTime; }, 0),
-        highSpeedDist:  valid.reduce(function (s, m) { return s + m.highSpeedDist; }, 0),
-        timeMoving:     valid.reduce(function (s, m) { return s + m.timeMoving; }, 0),
+        maxAccel: Math.max.apply(null, valid.map(function (m) { return m.maxAccel; })),
+        maxDecel: Math.max.apply(null, valid.map(function (m) { return m.maxDecel; })),
+        peakForce: Math.max.apply(null, valid.map(function (m) { return m.peakForce; })),
+        peakPower: Math.max.apply(null, valid.map(function (m) { return m.peakPower; })),
+        distToMax: Math.max.apply(null, valid.map(function (m) { return m.distToMax; })),
+        timeToMax: Math.max.apply(null, valid.map(function (m) { return m.timeToMax; })),
+        bmi: valid[0].bmi,
+        totalDist: valid.reduce(function (s, m) { return s + m.totalDist; }, 0),
+        duration: valid.reduce(function (s, m) { return s + m.duration; }, 0),
+        sprints: valid.reduce(function (s, m) { return s + m.sprints; }, 0),
+        runs: valid.reduce(function (s, m) { return s + m.runs; }, 0),
+        impacts: valid.reduce(function (s, m) { return s + m.impacts; }, 0),
+        work: valid.reduce(function (s, m) { return s + m.work; }, 0),
+        totalCal: valid.reduce(function (s, m) { return s + m.totalCal; }, 0),
+        playerLoad: valid.reduce(function (s, m) { return s + m.playerLoad; }, 0),
+        sprintDist: valid.reduce(function (s, m) { return s + m.sprintDist; }, 0),
+        sprintTime: valid.reduce(function (s, m) { return s + m.sprintTime; }, 0),
+        highSpeedDist: valid.reduce(function (s, m) { return s + m.highSpeedDist; }, 0),
+        timeMoving: valid.reduce(function (s, m) { return s + m.timeMoving; }, 0),
         timeStationary: valid.reduce(function (s, m) { return s + m.timeStationary; }, 0),
         zones: [0, 1, 2, 3, 4].map(function (i) { return valid.reduce(function (s, m) { return s + m.zones[i]; }, 0); }),
       };
