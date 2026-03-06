@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metric Arena</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: #2a2a3a;
+      --text: #e8e8f0;
+      --text-dim: #8888a0;
+      --accent: #00e5a0;
+      --accent2: #00b8ff;
+      --accent3: #ff6b6b;
+      --warn: #ffaa00;
+      --gradient: linear-gradient(135deg, #00e5a0, #00b8ff);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ========== Brand / Logo ========== */
+    .brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      animation: brandIn 0.8s ease both;
+    }
+
+    @keyframes brandIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .brand-logo {
+      width: 72px;
+      height: 72px;
+      position: relative;
+    }
+
+    .brand-logo svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 20px rgba(0, 229, 160, 0.3));
+    }
+
+    .brand-wordmark {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      position: relative;
+    }
+
+    .brand-wordmark .arena {
+      -webkit-text-fill-color: var(--text);
+      font-weight: 300;
+      letter-spacing: 2px;
+      opacity: 0.85;
+    }
+
+    .brand-tagline {
+      font-size: 13px;
+      color: var(--text-dim);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-top: -2px;
+    }
+
+    /* Small brand for dashboard header */
+    .brand-sm {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-sm .brand-logo-sm {
+      width: 32px;
+      height: 32px;
+    }
+
+    .brand-sm .brand-logo-sm svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 8px rgba(0, 229, 160, 0.25));
+    }
+
+    .brand-sm .brand-text-sm {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-sm .brand-text-sm .arena-sm {
+      -webkit-text-fill-color: var(--text);
+      font-weight: 300;
+      letter-spacing: 1px;
+      opacity: 0.85;
+    }
+
+    /* Pulse animation on logo hexagon */
+    @keyframes hexPulse {
+
+      0%,
+      100% {
+        opacity: 0.15;
+      }
+
+      50% {
+        opacity: 0.35;
+      }
+    }
+
+    .hex-pulse {
+      animation: hexPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes dashDraw {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    .logo-ring {
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      animation: dashDraw 1.2s ease forwards 0.3s;
+    }
+
+    /* ========== Upload Screen ========== */
+    #upload-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      position: relative;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    #upload-screen::before {
+      content: '';
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      width: 700px;
+      height: 700px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(0, 229, 160, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .upload-box {
+      text-align: center;
+      padding: 50px 60px;
+      border: 2px dashed var(--border);
+      border-radius: 24px;
+      background: var(--surface);
+      cursor: pointer;
+      transition: all 0.3s;
+      max-width: 520px;
+      width: 90%;
+    }
+
+    .upload-box:hover,
+    .upload-box.dragover {
+      border-color: var(--accent);
+      background: rgba(0, 229, 160, 0.03);
+      transform: translateY(-2px);
+    }
+
+    .upload-box h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .upload-box p {
+      color: var(--text-dim);
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      border-radius: 16px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    /* ========== Profile Card (on upload screen) ========== */
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      max-width: 520px;
+      width: 90%;
+    }
+
+    .profile-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .profile-card h3 .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .profile-grid .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .profile-grid .field.wide {
+      grid-column: span 2;
+    }
+
+    .profile-grid label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
+    .profile-grid input,
+    .profile-grid select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .profile-grid input:focus,
+    .profile-grid select:focus {
+      border-color: var(--accent);
+    }
+
+    .profile-grid select {
+      cursor: pointer;
+      appearance: auto;
+    }
+
+    .profile-grid select option {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .profile-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 12px;
+      font-style: italic;
+      text-align: center;
+    }
+
+    @media (max-width: 500px) {
+      .profile-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-grid .field.wide {
+        grid-column: span 1;
+      }
+    }
+
+    /* ========== Dashboard ========== */
+    #dashboard {
+      display: none;
+      padding: 24px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .dash-header h2 {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .dash-header .session-info {
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .btn {
+      padding: 8px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .btn-accent:hover {
+      opacity: 0.85;
+      color: #000;
+    }
+
+    .btn-small {
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    /* ========== Collapsible Thresholds ========== */
+    .collapsible {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .collapsible-header {
+      padding: 16px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .collapsible-header:hover {
+      background: var(--surface2);
+    }
+
+    .collapsible-header .title {
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .collapsible-header .title .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .collapsible-header .chevron {
+      transition: transform 0.3s;
+      color: var(--text-dim);
+      font-size: 18px;
+    }
+
+    .collapsible.open .collapsible-header .chevron {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.35s ease;
+      padding: 0 20px;
+    }
+
+    .collapsible.open .collapsible-body {
+      max-height: 800px;
+      padding: 0 20px 20px;
+    }
+
+    .threshold-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .threshold-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .threshold-item .th-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .threshold-item .th-label .th-value {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .threshold-item input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      height: 6px;
+      cursor: pointer;
+    }
+
+    .threshold-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+
+    /* ========== Metric Cards ========== */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      transition: all 0.25s;
+    }
+
+    .metric-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .metric-card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .metric-card .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 26px;
+      font-weight: 600;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .metric-card .unit {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-left: 4px;
+      font-weight: 400;
+      -webkit-text-fill-color: var(--text-dim);
+    }
+
+    .metric-card.secondary .value {
+      font-size: 22px;
+      background: linear-gradient(135deg, #00b8ff, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* ========== Sections ========== */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* Map */
+    #map-container {
+      height: 400px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .heatmap-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .heatmap-controls label {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .heatmap-controls input[type="range"] {
+      accent-color: var(--accent);
+      width: 180px;
+    }
+
+    /* Charts */
+    #accel-chart-container {
+      position: relative;
+      height: 260px;
+      cursor: crosshair;
+    }
+
+    #accel-chart {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .chart-legend span::before {
+      content: '';
+      display: inline-block;
+      width: 12px;
+      height: 3px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .legend-mag::before {
+      background: var(--accent);
+    }
+
+    .legend-speed::before {
+      background: var(--accent2);
+    }
+
+    .selection-overlay {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: rgba(0, 229, 160, 0.1);
+      border-left: 2px solid var(--accent);
+      border-right: 2px solid var(--accent);
+      pointer-events: none;
+      display: none;
+      z-index: 5;
+    }
+
+    .split-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .split-hint {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* Splits */
+    .splits-container {
+      margin-top: 16px;
+    }
+
+    .split-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 10px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .split-card .split-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .split-card .split-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .split-card .split-time {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .split-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .split-metric {
+      font-size: 12px;
+    }
+
+    .split-metric .sm-label {
+      color: var(--text-dim);
+    }
+
+    .split-metric .sm-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .delete-split {
+      background: none;
+      border: none;
+      color: var(--accent3);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .delete-split:hover {
+      background: rgba(255, 107, 107, 0.15);
+    }
+
+    /* Speed zone bar */
+    .zone-bar {
+      display: flex;
+      height: 28px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .zone-bar div {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #000;
+      min-width: 0;
+    }
+
+    /* Layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: var(--text-dim);
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .export-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===================== UPLOAD SCREEN ===================== -->
+  <div id="upload-screen">
+    <!-- Brand Logo -->
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Outer hexagon glow -->
+          <polygon class="hex-pulse" points="50,3 93,27 93,73 50,97 7,73 7,27" fill="url(#hexGlow)" stroke="none" />
+          <!-- Outer hexagon ring -->
+          <polygon class="logo-ring" points="50,5 91,28 91,72 50,95 9,72 9,28" fill="none" stroke="url(#gradStroke)"
+            stroke-width="2.5" stroke-linejoin="round" />
+          <!-- Inner speed lines -->
+          <line x1="28" y1="58" x2="52" y2="58" stroke="#00e5a0" stroke-width="3" stroke-linecap="round" opacity="0.9">
+            <animate attributeName="x2" values="52;58;52" dur="2s" repeatCount="indefinite" />
+          </line>
+          <line x1="32" y1="50" x2="68" y2="50" stroke="#00b8ff" stroke-width="3.5" stroke-linecap="round">
+            <animate attributeName="x2" values="68;74;68" dur="2.2s" repeatCount="indefinite" />
+          </line>
+          <line x1="28" y1="42" x2="48" y2="42" stroke="#00e5a0" stroke-width="2.5" stroke-linecap="round"
+            opacity="0.7">
+            <animate attributeName="x2" values="48;54;48" dur="1.8s" repeatCount="indefinite" />
+          </line>
+          <!-- Arrowhead / speed indicator -->
+          <polygon points="70,50 60,42 60,58" fill="url(#gradFill)" opacity="0.9">
+            <animate attributeName="opacity" values="0.9;1;0.9" dur="2s" repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="translate" values="0,0;4,0;0,0" dur="2.2s"
+              repeatCount="indefinite" />
+          </polygon>
+          <!-- Defs -->
+          <defs>
+            <linearGradient id="gradStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00e5a0" />
+              <stop offset="100%" stop-color="#00b8ff" />
+            </linearGradient>
+            <linearGradient id="gradFill" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00e5a0" />
+              <stop offset="100%" stop-color="#00b8ff" />
+            </linearGradient>
+            <radialGradient id="hexGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#00e5a0" stop-opacity="0.12" />
+              <stop offset="100%" stop-color="#00e5a0" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand-wordmark">METRIC<span class="arena"> ARENA</span></div>
+      <div class="brand-tagline">Performance Session Analytics</div>
+    </div>
+
+    <div class="upload-box" id="upload-box">
+      <div class="upload-icon">📡</div>
+      <h1>Load Session</h1>
+      <p>Drop your fitness tracker CSV file here<br>or click to browse</p>
+      <input type="file" id="file-input" accept=".csv">
+    </div>
+
+    <div class="profile-card">
+      <h3><span class="dot"></span> Athlete Profile</h3>
+      <div class="profile-grid">
+        <div class="field">
+          <label>Weight (kg)</label>
+          <input type="number" id="prof-weight" value="75" min="30" max="200" step="0.5">
+        </div>
+        <div class="field">
+          <label>Height (cm)</label>
+          <input type="number" id="prof-height" value="178" min="100" max="230" step="1">
+        </div>
+        <div class="field">
+          <label>Age</label>
+          <input type="number" id="prof-age" value="25" min="10" max="80" step="1">
+        </div>
+        <div class="field">
+          <label>Max Heart Rate (bpm)</label>
+          <input type="number" id="prof-maxhr" value="195" min="120" max="230" step="1">
+        </div>
+        <div class="field">
+          <label>Sex</label>
+          <select id="prof-sex">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sport</label>
+          <select id="prof-sport">
+            <option value="rugby">Rugby</option>
+            <option value="football">Football / Soccer</option>
+            <option value="hockey">Hockey</option>
+            <option value="athletics">Athletics / Track</option>
+            <option value="general">General / Other</option>
+          </select>
+        </div>
+        <div class="field wide">
+          <label>VO₂ Max (ml/kg/min) — optional, improves calorie estimate</label>
+          <input type="number" id="prof-vo2" value="" placeholder="e.g. 50" min="20" max="90" step="0.5">
+        </div>
+      </div>
+      <div class="profile-hint">Profile is used for calorie, power, force, and metabolic estimates. Values are saved in
+        your browser.</div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Processing session data…</p>
+  </div>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <div id="dashboard">
+    <div class="dash-header">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div class="brand-sm">
+          <div class="brand-logo-sm">
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="50,5 91,28 91,72 50,95 9,72 9,28" fill="none" stroke="url(#gs2)" stroke-width="3"
+                stroke-linejoin="round" />
+              <line x1="28" y1="58" x2="52" y2="58" stroke="#00e5a0" stroke-width="3" stroke-linecap="round"
+                opacity="0.9" />
+              <line x1="32" y1="50" x2="68" y2="50" stroke="#00b8ff" stroke-width="3.5" stroke-linecap="round" />
+              <line x1="28" y1="42" x2="48" y2="42" stroke="#00e5a0" stroke-width="2.5" stroke-linecap="round"
+                opacity="0.7" />
+              <polygon points="70,50 60,42 60,58" fill="url(#gf2)" opacity="0.9" />
+              <defs>
+                <linearGradient id="gs2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00e5a0" />
+                  <stop offset="100%" stop-color="#00b8ff" />
+                </linearGradient>
+                <linearGradient id="gf2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#00e5a0" />
+                  <stop offset="100%" stop-color="#00b8ff" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span class="brand-text-sm">METRIC<span class="arena-sm"> ARENA</span></span>
+        </div>
+        <div>
+          <h2>Session Overview</h2>
+          <div class="session-info" id="session-info"></div>
+        </div>
+      </div>
+      <div class="export-bar">
+        <button class="btn" onclick="exportJSON()">Export JSON</button>
+        <button class="btn" onclick="showUpload()">New Session</button>
+      </div>
+    </div>
+
+    <!-- Thresholds (collapsible) -->
+    <div class="collapsible" id="thresholds-section">
+      <div class="collapsible-header" onclick="toggleCollapsible('thresholds-section')">
+        <span class="title"><span class="dot" style="background:var(--warn)"></span> Thresholds &amp; Zones</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="threshold-grid" id="threshold-grid"></div>
+        <div class="threshold-actions">
+          <button class="btn btn-small" onclick="resetThresholds()">Reset Defaults</button>
+          <button class="btn btn-small btn-accent" onclick="applyThresholds()">Apply &amp; Recalculate</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics-grid" id="metrics-grid"></div>
+
+    <!-- Speed zone distribution bar -->
+    <div class="section" id="zone-section">
+      <div class="section-title"><span class="dot" style="background:var(--warn)"></span> Speed Zone Distribution</div>
+      <div id="zone-labels"
+        style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">
+      </div>
+      <div class="zone-bar" id="zone-bar"></div>
+      <div id="zone-legend" style="margin-top:10px;font-size:12px;color:var(--text-dim);line-height:1.8;"></div>
+    </div>
+
+    <div class="two-col">
+      <div class="section">
+        <div class="section-title"><span class="dot"></span> GPS Heatmap</div>
+        <div id="map-container">
+          <div id="map"></div>
+        </div>
+        <div class="heatmap-controls">
+          <label>Radius: <span id="radius-val">15</span></label>
+          <input type="range" id="heat-radius" min="5" max="50" value="15">
+          <label>Intensity: <span id="intensity-val">0.8</span></label>
+          <input type="range" id="heat-intensity" min="1" max="20" value="8">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="dot" style="background:var(--accent2)"></span> Speed Profile</div>
+        <div id="speed-chart-container" style="height:400px;">
+          <canvas id="speed-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="dot" style="background:var(--accent)"></span> Acceleration
+        (gravity-corrected via gyro) — Drag to select splits</div>
+      <div id="accel-chart-container">
+        <canvas id="accel-chart"></canvas>
+        <div class="selection-overlay" id="selection-overlay"></div>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-mag">Net Acceleration (m/s²)</span>
+        <span class="legend-speed">Speed (km/h)</span>
+      </div>
+      <div class="split-actions">
+        <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save
+          Split</button>
+        <button class="btn" id="clear-sel-btn" style="display:none" onclick="clearSelection()">Clear</button>
+        <span class="split-hint">Click and drag on the chart to select a time range</span>
+      </div>
+    </div>
+
+    <div class="section" id="splits-section" style="display:none">
+      <div class="section-title"><span class="dot" style="background:var(--accent3)"></span> Saved Splits</div>
+      <div class="splits-container" id="splits-container"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+  <script>
+    "use strict";
+
+    // ========== GLOBALS ==========
+    var sessionData = null;
+    var processedData = null;
+    var map = null;
+    var heatLayer = null;
+    var splits = [];
+    var selStart = null, selEnd = null;
+    var isDragging = false;
+    var accelChartInfo = null;
+
+    // ========== ATHLETE PROFILE ==========
+    function getProfile() {
+      return {
+        weight: parseFloat(document.getElementById('prof-weight').value) || 75,
+        height: parseFloat(document.getElementById('prof-height').value) || 178,
+        age: parseInt(document.getElementById('prof-age').value) || 25,
+        maxHR: parseInt(document.getElementById('prof-maxhr').value) || 195,
+        sex: document.getElementById('prof-sex').value || 'male',
+        sport: document.getElementById('prof-sport').value || 'general',
+        vo2max: parseFloat(document.getElementById('prof-vo2').value) || 0,
+      };
+    }
+
+    // ========== THRESHOLDS ==========
+    var thresholdDefs = [
+      { id: 'sprintSpeed', label: 'Sprint Speed', unit: 'km/h', min: 10, max: 35, step: 0.5, default: 20 },
+      { id: 'sprintHyst', label: 'Sprint Hysteresis (off)', unit: 'km/h', min: 5, max: 30, step: 0.5, default: 18 },
+      { id: 'runSpeed', label: 'Run Speed', unit: 'km/h', min: 4, max: 20, step: 0.5, default: 8 },
+      { id: 'runHyst', label: 'Run Hysteresis (off)', unit: 'km/h', min: 2, max: 15, step: 0.5, default: 5 },
+      { id: 'highSpeedThresh', label: 'High-Speed Zone', unit: 'km/h', min: 8, max: 30, step: 0.5, default: 15 },
+      { id: 'impactThresh', label: 'Impact Threshold', unit: 'm/s²', min: 2, max: 15, step: 0.5, default: 5 },
+      { id: 'impactBase', label: 'Impact Baseline (below)', unit: 'm/s²', min: 1, max: 10, step: 0.5, default: 3 },
+      { id: 'movingThresh', label: 'Moving Threshold', unit: 'km/h', min: 0.5, max: 5, step: 0.1, default: 1 },
+      { id: 'zone1', label: 'Speed Zone 1 Upper', unit: 'km/h', min: 1, max: 10, step: 0.5, default: 5 },
+      { id: 'zone2', label: 'Speed Zone 2 Upper', unit: 'km/h', min: 5, max: 18, step: 0.5, default: 10 },
+      { id: 'zone3', label: 'Speed Zone 3 Upper', unit: 'km/h', min: 10, max: 25, step: 0.5, default: 15 },
+      { id: 'zone4', label: 'Speed Zone 4 Upper', unit: 'km/h', min: 15, max: 35, step: 0.5, default: 20 },
+    ];
+
+    var thresholds = {};
+
+    function initThresholds() {
+      thresholdDefs.forEach(function (td) { thresholds[td.id] = td.default; });
+    }
+    initThresholds();
+
+    function renderThresholdSliders() {
+      var container = document.getElementById('threshold-grid');
+      container.innerHTML = thresholdDefs.map(function (td) {
+        var val = thresholds[td.id];
+        return '<div class="threshold-item">' +
+          '<div class="th-label"><span>' + td.label + '</span><span class="th-value" id="thval-' + td.id + '">' + val + ' ' + td.unit + '</span></div>' +
+          '<input type="range" id="th-' + td.id + '" min="' + td.min + '" max="' + td.max + '" step="' + td.step + '" value="' + val + '" oninput="updateThresholdDisplay(\'' + td.id + '\',this.value,\'' + td.unit + '\')">' +
+          '</div>';
+      }).join('');
+    }
+
+    function updateThresholdDisplay(id, val, unit) {
+      thresholds[id] = parseFloat(val);
+      document.getElementById('thval-' + id).textContent = val + ' ' + unit;
+    }
+
+    function resetThresholds() {
+      initThresholds();
+      renderThresholdSliders();
+    }
+
+    function applyThresholds() {
+      // Read current slider values
+      thresholdDefs.forEach(function (td) {
+        var el = document.getElementById('th-' + td.id);
+        if (el) thresholds[td.id] = parseFloat(el.value);
+      });
+      // Re-render metrics (data doesn't need reprocessing, just the metric computation)
+      if (processedData) renderDashboard();
+    }
+
+    function toggleCollapsible(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    // ========== FILE HANDLING ==========
+    var uploadBox = document.getElementById('upload-box');
+    var fileInput = document.getElementById('file-input');
+
+    uploadBox.addEventListener('click', function () { fileInput.click(); });
+    uploadBox.addEventListener('dragover', function (e) { e.preventDefault(); uploadBox.classList.add('dragover'); });
+    uploadBox.addEventListener('dragleave', function () { uploadBox.classList.remove('dragover'); });
+    uploadBox.addEventListener('drop', function (e) {
+      e.preventDefault(); uploadBox.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', function (e) { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+    function handleFile(file) {
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        setTimeout(function () {
+          try {
+            parseCSV(e.target.result);
+            processSession();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            renderThresholdSliders();
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () {
+                try { renderDashboard(); } catch (err2) { console.error('Render error:', err2); }
+              });
+            });
+          } catch (err) {
+            console.error('Processing error:', err);
+            alert('Error processing file: ' + err.message);
+            showUpload();
+            document.getElementById('loading').style.display = 'none';
+          }
+        }, 50);
+      };
+      reader.readAsText(file);
+    }
+
+    function showUpload() {
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('upload-screen').style.display = 'flex';
+      splits = [];
+      fileInput.value = '';
+    }
+
+    // ========== CSV PARSING ==========
+    function parseCSV(text) {
+      var lines = text.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      var headers = lines[0].split(',').map(function (h) { return h.trim(); });
+      sessionData = [];
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        var vals = line.split(',');
+        if (vals.length < headers.length) continue;
+        var row = {};
+        headers.forEach(function (h, j) { row[h] = vals[j].trim(); });
+        sessionData.push(row);
+      }
+      if (sessionData.length === 0) throw new Error('No data rows found');
+    }
+
+    // ========== PROCESSING (gravity correction) ==========
+    function processSession() {
+      var d = sessionData.map(function (r) {
+        return {
+          tick: parseFloat(r.kernelTick),
+          ts: new Date(+r.year, +r.month - 1, +r.day, +r.hour, +r.minute, +r.second, +r.millisecond),
+          lat: parseFloat(r.latitude),
+          lon: parseFloat(r.longitude),
+          speed: parseFloat(r.speed_kph),
+          ax: parseFloat(r.accel_x),
+          ay: parseFloat(r.accel_y),
+          az: parseFloat(r.accel_z),
+          gx: parseFloat(r.gyro_x),
+          gy: parseFloat(r.gyro_y),
+          gz: parseFloat(r.gyro_z),
+        };
+      });
+
+      var G = 9.80665;
+      var seedN = Math.min(50, d.length);
+      var gvx = 0, gvy = 0, gvz = 0;
+      for (var i = 0; i < seedN; i++) { gvx += d[i].ax; gvy += d[i].ay; gvz += d[i].az; }
+      gvx /= seedN; gvy /= seedN; gvz /= seedN;
+      var gMag = Math.sqrt(gvx * gvx + gvy * gvy + gvz * gvz);
+      if (gMag > 0.01) { gvx *= G / gMag; gvy *= G / gMag; gvz *= G / gMag; }
+
+      var alpha = 0.98;
+
+      for (var i = 0; i < d.length; i++) {
+        var p = d[i];
+        var dt = (i === 0) ? 0.1 : (p.tick - d[i - 1].tick) / 1000;
+        if (dt <= 0 || dt > 1) dt = 0.1;
+
+        var wx = p.gx, wy = p.gy, wz = p.gz;
+        var wMag = Math.sqrt(wx * wx + wy * wy + wz * wz);
+        var theta = wMag * dt;
+
+        var grx, gry, grz;
+        if (theta > 1e-9) {
+          var kx = wx / wMag, ky = wy / wMag, kz = wz / wMag;
+          var cosT = Math.cos(theta), sinT = Math.sin(theta);
+          var dot = kx * gvx + ky * gvy + kz * gvz;
+          var cx = ky * gvz - kz * gvy;
+          var cy = kz * gvx - kx * gvz;
+          var cz = kx * gvy - ky * gvx;
+          grx = gvx * cosT + cx * sinT + kx * dot * (1 - cosT);
+          gry = gvy * cosT + cy * sinT + ky * dot * (1 - cosT);
+          grz = gvz * cosT + cz * sinT + kz * dot * (1 - cosT);
+        } else {
+          grx = gvx; gry = gvy; grz = gvz;
+        }
+
+        gvx = alpha * grx + (1 - alpha) * p.ax;
+        gvy = alpha * gry + (1 - alpha) * p.ay;
+        gvz = alpha * grz + (1 - alpha) * p.az;
+        gMag = Math.sqrt(gvx * gvx + gvy * gvy + gvz * gvz);
+        if (gMag > 0.01) { gvx *= G / gMag; gvy *= G / gMag; gvz *= G / gMag; }
+
+        p.linX = p.ax - gvx;
+        p.linY = p.ay - gvy;
+        p.linZ = p.az - gvz;
+        p.linMag = Math.sqrt(p.linX * p.linX + p.linY * p.linY + p.linZ * p.linZ);
+        p.t = (p.tick - d[0].tick) / 1000;
+      }
+
+      for (var i = 0; i < d.length; i++) {
+        if (i === 0) { d[i].dist = 0; d[i].cumDist = 0; continue; }
+        d[i].dist = haversine(d[i - 1].lat, d[i - 1].lon, d[i].lat, d[i].lon);
+        d[i].cumDist = d[i - 1].cumDist + d[i].dist;
+      }
+      processedData = d;
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      var R = 6371000;
+      var dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // ========== METRICS COMPUTATION ==========
+    function computeMetrics(data) {
+      if (!data || data.length < 2) return null;
+
+      var prof = getProfile();
+      var T = thresholds;
+      var mass = prof.weight;
+
+      var speeds = data.map(function (d) { return d.speed; });
+      var maxSpeed = Math.max.apply(null, speeds);
+      var maxSpeedMs = maxSpeed / 3.6;
+
+      var accels = data.map(function (d) { return d.linMag; });
+      var maxAccel = Math.max.apply(null, accels);
+
+      var movingAccels = []; var movingSpeeds = [];
+      data.forEach(function (d) {
+        if (d.speed > T.movingThresh) { movingAccels.push(d.linMag); movingSpeeds.push(d.speed); }
+      });
+      var avgAccel = movingAccels.length ? movingAccels.reduce(function (a, b) { return a + b; }, 0) / movingAccels.length : 0;
+      var avgSpeed = movingSpeeds.length ? movingSpeeds.reduce(function (a, b) { return a + b; }, 0) / movingSpeeds.length : 0;
+
+      // Distance & time to max speed
+      var maxSpeedIdx = speeds.indexOf(maxSpeed);
+      var startIdx = 0;
+      for (var i = maxSpeedIdx - 1; i >= 0; i--) { if (data[i].speed < T.movingThresh) { startIdx = i; break; } }
+      var distToMax = 0;
+      for (var i = startIdx; i < maxSpeedIdx; i++) distToMax += data[i + 1].dist;
+      var timeToMax = data[maxSpeedIdx].t - data[startIdx].t;
+
+      var totalDist = data[data.length - 1].cumDist - data[0].cumDist;
+      var duration = data[data.length - 1].t - data[0].t;
+
+      // Sprints
+      var sprints = 0, inSprint = false;
+      var sprintDist = 0, sprintTime = 0, inSprintTrack = false;
+      for (var i = 0; i < data.length; i++) {
+        if (data[i].speed > T.sprintSpeed && !inSprint) { sprints++; inSprint = true; }
+        if (data[i].speed < T.sprintHyst) inSprint = false;
+        if (data[i].speed > T.sprintSpeed) {
+          if (i > 0) sprintDist += data[i].dist;
+          sprintTime += (i > 0 ? (data[i].t - data[i - 1].t) : 0);
+        }
+      }
+
+      // Runs
+      var runs = 0, inRun = false;
+      for (var i = 0; i < data.length; i++) {
+        if (data[i].speed > T.runSpeed && !inRun) { runs++; inRun = true; }
+        if (data[i].speed < T.runHyst) inRun = false;
+      }
+
+      // Impacts
+      var impacts = 0;
+      for (var i = 1; i < data.length; i++) {
+        if (data[i].linMag > T.impactThresh && data[i - 1].linMag < T.impactBase) impacts++;
+      }
+
+      // High speed distance
+      var highSpeedDist = 0;
+      for (var i = 1; i < data.length; i++) { if (data[i].speed > T.highSpeedThresh) highSpeedDist += data[i].dist; }
+
+      // Work (J) = sum of F·d = sum of m·a·d
+      var work = 0;
+      for (var i = 1; i < data.length; i++) work += mass * data[i].linMag * data[i].dist;
+
+      // Player load
+      var playerLoad = 0;
+      for (var i = 1; i < data.length; i++) {
+        var dx = data[i].linX - data[i - 1].linX;
+        var dy = data[i].linY - data[i - 1].linY;
+        var dz = data[i].linZ - data[i - 1].linZ;
+        playerLoad += Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+
+      // ===== PROFILE-DEPENDENT METRICS =====
+
+      // Peak Force (N) = mass × max accel
+      var peakForce = mass * maxAccel;
+
+      // Avg Force when moving
+      var avgForce = mass * avgAccel;
+
+      // Peak Power estimate (W) = F × v at the point of max accel while moving
+      // We find the sample with max (accel × speed)
+      var peakPower = 0;
+      for (var i = 0; i < data.length; i++) {
+        var pw = mass * data[i].linMag * (data[i].speed / 3.6);
+        if (pw > peakPower) peakPower = pw;
+      }
+
+      // Avg Power when moving
+      var avgPower = 0; var movingCount = 0;
+      for (var i = 0; i < data.length; i++) {
+        if (data[i].speed > T.movingThresh) {
+          avgPower += mass * data[i].linMag * (data[i].speed / 3.6);
+          movingCount++;
+        }
+      }
+      avgPower = movingCount > 0 ? avgPower / movingCount : 0;
+
+      // Calorie estimate (kcal)
+      // Using MET-based estimation from speed
+      // Walking ~3.5 METs, jogging ~7 METs, running ~10 METs, sprinting ~15+ METs
+      var totalCal = 0;
+      for (var i = 1; i < data.length; i++) {
+        var dt = data[i].t - data[i - 1].t;
+        if (dt <= 0 || dt > 2) continue;
+        var spd = data[i].speed;
+        var met;
+        if (spd < 1) met = 1.2;           // standing/idle
+        else if (spd < 5) met = 3.5;      // walking
+        else if (spd < 8) met = 6.0;      // brisk walk / light jog
+        else if (spd < 12) met = 9.0;     // jogging
+        else if (spd < 16) met = 11.0;    // running
+        else if (spd < 20) met = 13.5;    // fast running
+        else met = 16.0;                   // sprinting
+        // kcal/s = MET × 3.5 × mass(kg) / (200 × 60)
+        totalCal += met * 3.5 * mass / 12000 * dt;
+      }
+
+      // Metabolic Power (W/kg) — average over session
+      // Using di Prampero's model: Pmet = (work / duration) / mass
+      var metabolicPower = duration > 0 ? (work / duration) / mass : 0;
+
+      // Relative Player Load (per minute)
+      var plPerMin = duration > 0 ? playerLoad / (duration / 60) : 0;
+
+      // BMI (informational)
+      var heightM = prof.height / 100;
+      var bmi = mass / (heightM * heightM);
+
+      // Max deceleration
+      var maxDecel = 0;
+      for (var i = 1; i < data.length; i++) {
+        var dv = (data[i].speed - data[i - 1].speed) / 3.6; // m/s
+        var dt = data[i].t - data[i - 1].t;
+        if (dt > 0) {
+          var decel = -dv / dt; // positive = deceleration
+          if (decel > maxDecel) maxDecel = decel;
+        }
+      }
+
+      // Time moving vs stationary
+      var timeMoving = 0;
+      for (var i = 1; i < data.length; i++) {
+        if (data[i].speed > T.movingThresh) timeMoving += (data[i].t - data[i - 1].t);
+      }
+      var timeStationary = duration - timeMoving;
+
+      // Speed zones distribution (seconds in each zone)
+      var zones = [0, 0, 0, 0, 0]; // Z1..Z4, Z5(above zone4)
+      for (var i = 1; i < data.length; i++) {
+        var dt = data[i].t - data[i - 1].t;
+        if (dt <= 0 || dt > 2) continue;
+        var spd = data[i].speed;
+        if (spd <= T.zone1) zones[0] += dt;
+        else if (spd <= T.zone2) zones[1] += dt;
+        else if (spd <= T.zone3) zones[2] += dt;
+        else if (spd <= T.zone4) zones[3] += dt;
+        else zones[4] += dt;
+      }
+
+      return {
+        maxSpeed: maxSpeed, maxSpeedMs: maxSpeedMs, maxAccel: maxAccel, avgAccel: avgAccel,
+        distToMax: distToMax, timeToMax: timeToMax, totalDist: totalDist, duration: duration,
+        sprints: sprints, sprintDist: sprintDist, sprintTime: sprintTime,
+        runs: runs, impacts: impacts, work: work, avgSpeed: avgSpeed,
+        highSpeedDist: highSpeedDist, playerLoad: playerLoad,
+        peakForce: peakForce, avgForce: avgForce, peakPower: peakPower, avgPower: avgPower,
+        totalCal: totalCal, metabolicPower: metabolicPower, plPerMin: plPerMin,
+        bmi: bmi, maxDecel: maxDecel, timeMoving: timeMoving, timeStationary: timeStationary,
+        zones: zones
+      };
+    }
+
+    // ========== RENDERING ==========
+    function renderDashboard() {
+      var m = computeMetrics(processedData);
+      var d0 = processedData[0];
+      var prof = getProfile();
+
+      document.getElementById('session-info').textContent =
+        d0.ts.toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        + ' \u00B7 ' + d0.ts.toLocaleTimeString('en-ZA')
+        + ' \u00B7 ' + formatDuration(m.duration)
+        + ' \u00B7 ' + prof.weight + 'kg';
+
+      var T = thresholds;
+
+      var cards = [
+        { label: 'Max Speed', value: m.maxSpeed.toFixed(1), unit: 'km/h' },
+        { label: 'Max Speed', value: m.maxSpeedMs.toFixed(1), unit: 'm/s' },
+        { label: 'Avg Speed (moving)', value: m.avgSpeed.toFixed(1), unit: 'km/h' },
+        { label: 'Max Acceleration', value: m.maxAccel.toFixed(1), unit: 'm/s\u00B2' },
+        { label: 'Max Deceleration', value: m.maxDecel.toFixed(1), unit: 'm/s\u00B2' },
+        { label: 'Avg Acceleration', value: m.avgAccel.toFixed(2), unit: 'm/s\u00B2' },
+        { label: 'Dist to Max Speed', value: m.distToMax.toFixed(1), unit: 'm' },
+        { label: 'Time to Max Speed', value: m.timeToMax.toFixed(1), unit: 's' },
+        { label: 'Total Distance', value: m.totalDist.toFixed(0), unit: 'm' },
+        { label: 'High Speed Distance', value: m.highSpeedDist.toFixed(0), unit: 'm' },
+        { label: 'Sprint Distance', value: m.sprintDist.toFixed(0), unit: 'm' },
+        { label: 'Duration', value: formatDuration(m.duration), unit: '' },
+        { label: 'Time Moving', value: formatDuration(m.timeMoving), unit: '' },
+        { label: 'Time Stationary', value: formatDuration(m.timeStationary), unit: '' },
+        { label: 'Sprints (>' + T.sprintSpeed + ' km/h)', value: String(m.sprints), unit: '' },
+        { label: 'Runs (>' + T.runSpeed + ' km/h)', value: String(m.runs), unit: '' },
+        { label: 'Impacts (>' + T.impactThresh + ' m/s\u00B2)', value: String(m.impacts), unit: '' },
+      ];
+
+      var profileCards = [
+        { label: 'Peak Force', value: m.peakForce.toFixed(0), unit: 'N', sec: true },
+        { label: 'Avg Force (moving)', value: m.avgForce.toFixed(0), unit: 'N', sec: true },
+        { label: 'Peak Power', value: m.peakPower.toFixed(0), unit: 'W', sec: true },
+        { label: 'Avg Power (moving)', value: m.avgPower.toFixed(0), unit: 'W', sec: true },
+        { label: 'Est. Calories', value: m.totalCal.toFixed(0), unit: 'kcal', sec: true },
+        { label: 'Est. Work', value: (m.work / 1000).toFixed(1), unit: 'kJ', sec: true },
+        { label: 'Metabolic Power', value: m.metabolicPower.toFixed(1), unit: 'W/kg', sec: true },
+        { label: 'Player Load', value: m.playerLoad.toFixed(0), unit: 'au', sec: true },
+        { label: 'Player Load / min', value: m.plPerMin.toFixed(1), unit: 'au/min', sec: true },
+        { label: 'BMI', value: m.bmi.toFixed(1), unit: '', sec: true },
+      ];
+
+      var allCards = cards.concat(profileCards);
+
+      document.getElementById('metrics-grid').innerHTML = allCards.map(function (c) {
+        var cls = c.sec ? 'metric-card secondary' : 'metric-card';
+        return '<div class="' + cls + '">' +
+          '<div class="label">' + c.label + '</div>' +
+          '<div class="value">' + c.value + '<span class="unit">' + c.unit + '</span></div>' +
+          '</div>';
+      }).join('');
+
+      // Speed zone bar
+      renderSpeedZones(m);
+
+      renderMap();
+      renderAccelChart();
+      renderSpeedChart();
+    }
+
+    function renderSpeedZones(m) {
+      var T = thresholds;
+      var zones = m.zones;
+      var total = zones.reduce(function (a, b) { return a + b; }, 0) || 1;
+      var colors = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444'];
+      var names = [
+        'Z1: 0–' + T.zone1,
+        'Z2: ' + T.zone1 + '–' + T.zone2,
+        'Z3: ' + T.zone2 + '–' + T.zone3,
+        'Z4: ' + T.zone3 + '–' + T.zone4,
+        'Z5: >' + T.zone4
+      ];
+
+      var barHTML = '';
+      var legendHTML = '';
+      for (var i = 0; i < 5; i++) {
+        var pct = (zones[i] / total * 100);
+        if (pct < 0.5) { barHTML += '<div style="background:' + colors[i] + ';flex:0"></div>'; }
+        else {
+          barHTML += '<div style="background:' + colors[i] + ';flex:' + pct.toFixed(1) + '">' + (pct >= 5 ? pct.toFixed(0) + '%' : '') + '</div>';
+        }
+        legendHTML += '<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:' + colors[i] + ';vertical-align:middle;margin-right:4px;"></span>' +
+          names[i] + ' km/h — ' + formatDuration(zones[i]) + ' (' + pct.toFixed(1) + '%)&nbsp;&nbsp;&nbsp;';
+      }
+      document.getElementById('zone-bar').innerHTML = barHTML;
+      document.getElementById('zone-legend').innerHTML = legendHTML;
+    }
+
+    function formatDuration(secs) {
+      var m = Math.floor(secs / 60);
+      var s = Math.floor(secs % 60);
+      return m + 'm ' + s + 's';
+    }
+
+    // ========== MAP ==========
+    function renderMap() {
+      if (map) { map.remove(); map = null; }
+      var lats = processedData.map(function (d) { return d.lat; });
+      var lons = processedData.map(function (d) { return d.lon; });
+      var centerLat = (Math.min.apply(null, lats) + Math.max.apply(null, lats)) / 2;
+      var centerLon = (Math.min.apply(null, lons) + Math.max.apply(null, lons)) / 2;
+
+      map = L.map('map', { zoomControl: true }).setView([centerLat, centerLon], 18);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB', maxZoom: 20
+      }).addTo(map);
+
+      var heatPoints = processedData.map(function (d) { return [d.lat, d.lon, 0.8]; });
+      heatLayer = L.heatLayer(heatPoints, {
+        radius: 15, blur: 12, maxZoom: 20,
+        gradient: { 0.2: '#0a0a6b', 0.4: '#00b8ff', 0.6: '#00e5a0', 0.8: '#ffaa00', 1.0: '#ff6b6b' }
+      }).addTo(map);
+
+      L.polyline(processedData.map(function (d) { return [d.lat, d.lon]; }), { color: '#00e5a080', weight: 2 }).addTo(map);
+
+      document.getElementById('heat-radius').oninput = function () {
+        document.getElementById('radius-val').textContent = this.value; updateHeatmap();
+      };
+      document.getElementById('heat-intensity').oninput = function () {
+        document.getElementById('intensity-val').textContent = (this.value / 10).toFixed(1); updateHeatmap();
+      };
+      setTimeout(function () { if (map) map.invalidateSize(); }, 300);
+      setTimeout(function () { if (map) map.invalidateSize(); }, 800);
+    }
+
+    function updateHeatmap() {
+      var radius = +document.getElementById('heat-radius').value;
+      var intensity = +document.getElementById('heat-intensity').value / 10;
+      if (heatLayer) map.removeLayer(heatLayer);
+      heatLayer = L.heatLayer(processedData.map(function (d) { return [d.lat, d.lon, intensity]; }), {
+        radius: radius, blur: Math.max(1, radius * 0.8), maxZoom: 20,
+        gradient: { 0.2: '#0a0a6b', 0.4: '#00b8ff', 0.6: '#00e5a0', 0.8: '#ffaa00', 1.0: '#ff6b6b' }
+      }).addTo(map);
+    }
+
+    // ========== CANVAS CHARTS ==========
+    function setupCanvas(canvas, container) {
+      var rect = container.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      var w = Math.max(rect.width, 100);
+      var h = Math.max(rect.height, 100);
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      return { ctx: ctx, W: w, H: h };
+    }
+
+    function renderSpeedChart() {
+      var canvas = document.getElementById('speed-chart');
+      var container = document.getElementById('speed-chart-container');
+      var info = setupCanvas(canvas, container);
+      var ctx = info.ctx, W = info.W, H = info.H;
+      var pad = { top: 20, right: 20, bottom: 40, left: 50 };
+      var cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+
+      var speeds = processedData.map(function (d) { return d.speed; });
+      var times = processedData.map(function (d) { return d.t; });
+      var maxS = Math.max.apply(null, speeds) * 1.1 || 1;
+      var maxT = times[times.length - 1] || 1;
+
+      ctx.strokeStyle = '#1a1a26'; ctx.lineWidth = 1;
+      for (var i = 0; i <= 5; i++) {
+        var y = pad.top + (cH / 5) * i;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      }
+
+      // Draw speed zone backgrounds
+      var T = thresholds;
+      var zoneBounds = [0, T.zone1, T.zone2, T.zone3, T.zone4, maxS * 1.2];
+      var zoneColors = ['rgba(59,130,246,0.06)', 'rgba(34,197,94,0.06)', 'rgba(234,179,8,0.06)', 'rgba(249,115,22,0.06)', 'rgba(239,68,68,0.06)'];
+      for (var z = 0; z < 5; z++) {
+        var yTop = pad.top + cH - (Math.min(zoneBounds[z + 1], maxS) / maxS) * cH;
+        var yBot = pad.top + cH - (zoneBounds[z] / maxS) * cH;
+        if (yTop < pad.top) yTop = pad.top;
+        if (yBot > pad.top + cH) yBot = pad.top + cH;
+        ctx.fillStyle = zoneColors[z];
+        ctx.fillRect(pad.left, yTop, cW, yBot - yTop);
+      }
+
+      ctx.beginPath(); ctx.moveTo(pad.left, pad.top + cH);
+      for (var i = 0; i < processedData.length; i++) {
+        ctx.lineTo(pad.left + (times[i] / maxT) * cW, pad.top + cH - (speeds[i] / maxS) * cH);
+      }
+      ctx.lineTo(pad.left + cW, pad.top + cH); ctx.closePath();
+      var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+      grad.addColorStop(0, 'rgba(0,184,255,0.3)'); grad.addColorStop(1, 'rgba(0,184,255,0.02)');
+      ctx.fillStyle = grad; ctx.fill();
+
+      ctx.beginPath(); ctx.strokeStyle = '#00b8ff'; ctx.lineWidth = 2;
+      for (var i = 0; i < processedData.length; i++) {
+        var x = pad.left + (times[i] / maxT) * cW, y = pad.top + cH - (speeds[i] / maxS) * cH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Sprint highlight
+      ctx.fillStyle = 'rgba(255,107,107,0.1)';
+      var inSp = false, spStart = 0;
+      for (var i = 0; i < processedData.length; i++) {
+        if (speeds[i] > T.sprintSpeed && !inSp) { inSp = true; spStart = pad.left + (times[i] / maxT) * cW; }
+        if ((speeds[i] < T.sprintHyst || i === processedData.length - 1) && inSp) {
+          ctx.fillRect(spStart, pad.top, pad.left + (times[i] / maxT) * cW - spStart, cH);
+          inSp = false;
+        }
+      }
+
+      ctx.fillStyle = '#8888a0'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'right';
+      for (var i = 0; i <= 5; i++) ctx.fillText((maxS / 5 * (5 - i)).toFixed(0), pad.left - 8, pad.top + (cH / 5) * i + 4);
+      ctx.textAlign = 'center';
+      for (var i = 0; i <= 4; i++) {
+        var t = (maxT / 4) * i;
+        ctx.fillText(formatDuration(t), pad.left + (t / maxT) * cW, H - 10);
+      }
+      ctx.font = '12px DM Sans, sans-serif';
+      ctx.fillText('Speed (km/h) \u2014 zone backgrounds shown', pad.left + cW / 2, H - 2);
+    }
+
+    function renderAccelChart() {
+      var canvas = document.getElementById('accel-chart');
+      var container = document.getElementById('accel-chart-container');
+      var info = setupCanvas(canvas, container);
+      var ctx = info.ctx, W = info.W, H = info.H;
+      var pad = { top: 20, right: 50, bottom: 30, left: 50 };
+      var cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+
+      var step = Math.max(1, Math.floor(processedData.length / 800));
+      var sampled = processedData.filter(function (_, i) { return i % step === 0; });
+
+      var accels = sampled.map(function (d) { return d.linMag; });
+      var speeds = sampled.map(function (d) { return d.speed; });
+      var times = sampled.map(function (d) { return d.t; });
+      var maxA = Math.min(Math.max.apply(null, accels) * 1.1, 60) || 1;
+      var maxS = Math.max.apply(null, speeds) * 1.1 || 1;
+      var maxT = times[times.length - 1] || 1;
+
+      accelChartInfo = { pad: pad, cW: cW, cH: cH, maxT: maxT, W: W, H: H };
+
+      ctx.strokeStyle = '#1a1a26'; ctx.lineWidth = 1;
+      for (var i = 0; i <= 5; i++) {
+        var y = pad.top + (cH / 5) * i;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      }
+
+      // Impact threshold line
+      var T = thresholds;
+      var impactY = pad.top + cH - (T.impactThresh / maxA) * cH;
+      if (impactY > pad.top && impactY < pad.top + cH) {
+        ctx.strokeStyle = 'rgba(255,107,107,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(pad.left, impactY); ctx.lineTo(W - pad.right, impactY); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,107,107,0.5)'; ctx.font = '10px JetBrains Mono, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('impact ' + T.impactThresh + ' m/s\u00B2', pad.left + 4, impactY - 4);
+      }
+
+      ctx.beginPath(); ctx.moveTo(pad.left, pad.top + cH);
+      for (var i = 0; i < sampled.length; i++)
+        ctx.lineTo(pad.left + (times[i] / maxT) * cW, pad.top + cH - (Math.min(accels[i], maxA) / maxA) * cH);
+      ctx.lineTo(pad.left + (times[times.length - 1] / maxT) * cW, pad.top + cH); ctx.closePath();
+      var grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+      grad.addColorStop(0, 'rgba(0,229,160,0.25)'); grad.addColorStop(1, 'rgba(0,229,160,0.01)');
+      ctx.fillStyle = grad; ctx.fill();
+
+      ctx.beginPath(); ctx.strokeStyle = '#00e5a0'; ctx.lineWidth = 1.5;
+      for (var i = 0; i < sampled.length; i++) {
+        var x = pad.left + (times[i] / maxT) * cW, y = pad.top + cH - (Math.min(accels[i], maxA) / maxA) * cH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      ctx.beginPath(); ctx.strokeStyle = '#00b8ff80'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      for (var i = 0; i < sampled.length; i++) {
+        var x = pad.left + (times[i] / maxT) * cW, y = pad.top + cH - (speeds[i] / maxS) * cH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+
+      ctx.fillStyle = '#00e5a0'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'right';
+      for (var i = 0; i <= 5; i++) ctx.fillText((maxA / 5 * (5 - i)).toFixed(0), pad.left - 8, pad.top + (cH / 5) * i + 4);
+      ctx.fillStyle = '#00b8ff'; ctx.textAlign = 'left';
+      for (var i = 0; i <= 5; i++) ctx.fillText((maxS / 5 * (5 - i)).toFixed(0), W - pad.right + 8, pad.top + (cH / 5) * i + 4);
+      ctx.fillStyle = '#8888a0'; ctx.textAlign = 'center';
+      for (var i = 0; i <= 4; i++) {
+        var t = (maxT / 4) * i;
+        ctx.fillText(formatDuration(t), pad.left + (t / maxT) * cW, H - 6);
+      }
+      setupChartSelection();
+    }
+
+    // ========== SPLIT SELECTION ==========
+    function setupChartSelection() {
+      var canvas = document.getElementById('accel-chart');
+      var overlay = document.getElementById('selection-overlay');
+
+      function xToTime(clientX) {
+        var rect = canvas.getBoundingClientRect();
+        var x = clientX - rect.left;
+        var t = ((x - accelChartInfo.pad.left) / accelChartInfo.cW) * accelChartInfo.maxT;
+        return Math.max(0, Math.min(accelChartInfo.maxT, t));
+      }
+      function timeToX(t) {
+        return accelChartInfo.pad.left + (t / accelChartInfo.maxT) * accelChartInfo.cW;
+      }
+
+      canvas.onmousedown = function (e) {
+        isDragging = true; selStart = xToTime(e.clientX); selEnd = selStart;
+        overlay.style.display = 'block'; overlay.style.width = '0px';
+      };
+      canvas.onmousemove = function (e) {
+        if (!isDragging) return;
+        selEnd = xToTime(e.clientX);
+        overlay.style.left = Math.min(timeToX(selStart), timeToX(selEnd)) + 'px';
+        overlay.style.width = Math.abs(timeToX(selEnd) - timeToX(selStart)) + 'px';
+      };
+      canvas.onmouseup = function (e) {
+        if (!isDragging) return;
+        isDragging = false; selEnd = xToTime(e.clientX);
+        if (Math.abs(selEnd - selStart) > 0.3) {
+          document.getElementById('save-split-btn').style.display = 'inline-block';
+          document.getElementById('clear-sel-btn').style.display = 'inline-block';
+        } else clearSelection();
+      };
+      canvas.onmouseleave = function () { isDragging = false; };
+    }
+
+    function clearSelection() {
+      document.getElementById('selection-overlay').style.display = 'none';
+      document.getElementById('save-split-btn').style.display = 'none';
+      document.getElementById('clear-sel-btn').style.display = 'none';
+      selStart = null; selEnd = null;
+    }
+
+    function saveSplit() {
+      if (selStart === null || selEnd === null) return;
+      var tMin = Math.min(selStart, selEnd), tMax = Math.max(selStart, selEnd);
+      var splitData = processedData.filter(function (d) { return d.t >= tMin && d.t <= tMax; });
+      if (splitData.length < 5) return;
+      splits.push({ id: Date.now(), name: 'Split ' + (splits.length + 1), tStart: tMin, tEnd: tMax, metrics: computeMetrics(splitData) });
+      renderSplits();
+      clearSelection();
+    }
+
+    function renderSplits() {
+      var section = document.getElementById('splits-section');
+      var container = document.getElementById('splits-container');
+      if (splits.length === 0) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      container.innerHTML = splits.map(function (s) {
+        var m = s.metrics;
+        return '<div class="split-card"><div class="split-header">' +
+          '<span class="split-name">' + s.name + '</span><div>' +
+          '<span class="split-time">' + formatDuration(s.tStart) + ' \u2192 ' + formatDuration(s.tEnd) + '</span> ' +
+          '<button class="delete-split" onclick="deleteSplit(' + s.id + ')">\u2715</button></div></div>' +
+          '<div class="split-metrics">' +
+          sm('Max Speed', m.maxSpeed.toFixed(1) + ' km/h') +
+          sm('Avg Speed', m.avgSpeed.toFixed(1) + ' km/h') +
+          sm('Max Accel', m.maxAccel.toFixed(1) + ' m/s\u00B2') +
+          sm('Max Decel', m.maxDecel.toFixed(1) + ' m/s\u00B2') +
+          sm('Distance', m.totalDist.toFixed(0) + ' m') +
+          sm('Duration', formatDuration(m.duration)) +
+          sm('Sprints', m.sprints) +
+          sm('Impacts', m.impacts) +
+          sm('Peak Force', m.peakForce.toFixed(0) + ' N') +
+          sm('Peak Power', m.peakPower.toFixed(0) + ' W') +
+          sm('Calories', m.totalCal.toFixed(0) + ' kcal') +
+          sm('Work', (m.work / 1000).toFixed(1) + ' kJ') +
+          sm('Player Load', m.playerLoad.toFixed(0) + ' au') +
+          '</div></div>';
+      }).join('');
+    }
+    function sm(label, value) {
+      return '<div class="split-metric"><span class="sm-label">' + label + '</span><br><span class="sm-value">' + value + '</span></div>';
+    }
+
+    function deleteSplit(id) {
+      splits = splits.filter(function (s) { return s.id !== id; });
+      renderSplits();
+    }
+
+    // ========== EXPORT ==========
+    function exportJSON() {
+      var m = computeMetrics(processedData);
+      var prof = getProfile();
+      var data = {
+        profile: prof,
+        thresholds: thresholds,
+        session: { date: processedData[0].ts.toISOString(), duration: m.duration, metrics: m },
+        splits: splits.map(function (s) { return { name: s.name, timeRange: [s.tStart, s.tEnd], metrics: s.metrics }; })
+      };
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'session_' + processedData[0].ts.toISOString().slice(0, 10) + '.json';
+      a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    // ========== RESIZE ==========
+    var resizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if (processedData) { renderAccelChart(); renderSpeedChart(); if (map) map.invalidateSize(); }
+      }, 150);
+    });
+  </script>
+</body>
+
+</html>
