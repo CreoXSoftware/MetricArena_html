@@ -1068,6 +1068,8 @@
     var chartView = { tStart: 0, tEnd: 0 };
     var speedZoomReady = false;
     var accelZoomReady = false;
+    var speedChartImageData = null;
+    var accelChartImageData = null;
 
     // ========== ATHLETE PROFILE ==========
     function getProfile() {
@@ -1089,7 +1091,7 @@
       { id: 'runSpeed', label: 'Run Speed', unit: 'km/h', min: 4, max: 20, step: 0.5, default: 8 },
       { id: 'runHyst', label: 'Run Hysteresis (off)', unit: 'km/h', min: 2, max: 15, step: 0.5, default: 5 },
       { id: 'highSpeedThresh', label: 'High-Speed Zone', unit: 'km/h', min: 8, max: 30, step: 0.5, default: 15 },
-      { id: 'impactThresh', label: 'Impact Threshold', unit: 'm/s²', min: 2, max: 15, step: 0.5, default: 5 },
+      { id: 'impactThresh', label: 'Impact Threshold', unit: 'm/s²', min: 2, max: 100, step: 0.5, default: 5 },
       { id: 'impactBase', label: 'Impact Baseline (below)', unit: 'm/s²', min: 1, max: 10, step: 0.5, default: 3 },
       { id: 'movingThresh', label: 'Moving Threshold', unit: 'km/h', min: 0.5, max: 5, step: 0.1, default: 1 },
       { id: 'zone1', label: 'Speed Zone 1 Upper', unit: 'km/h', min: 1, max: 10, step: 0.5, default: 5 },
@@ -1697,12 +1699,13 @@
 
       var tStart = chartView.tStart, tEnd = chartView.tEnd;
       var tRange = tEnd - tStart;
-      speedChartInfo = { pad: pad, cW: cW, cH: cH, tStart: tStart, tEnd: tEnd, W: W, H: H };
+      speedChartInfo = { pad: pad, cW: cW, cH: cH, tStart: tStart, tEnd: tEnd, W: W, H: H, maxS: 0 };
 
       // Only data in the visible window
       var visible = processedData.filter(function (d) { return d.t >= tStart && d.t <= tEnd; });
       if (!visible.length) visible = processedData;
       var maxS = Math.max.apply(null, visible.map(function (d) { return d.speed; })) * 1.1 || 1;
+      speedChartInfo.maxS = maxS;
 
       function tToX(t) { return pad.left + ((t - tStart) / tRange) * cW; }
 
@@ -1769,6 +1772,8 @@
       ctx.fillStyle = '#555570';
       ctx.textAlign = 'right';
       ctx.fillText('scroll to zoom  \u2022  dbl-click to reset', W - pad.right, 14);
+      speedChartImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setupSpeedChartHover();
     }
 
     function renderAccelChart() {
@@ -1781,7 +1786,7 @@
 
       var tStart = chartView.tStart, tEnd = chartView.tEnd;
       var tRange = tEnd - tStart;
-      accelChartInfo = { pad: pad, cW: cW, cH: cH, tStart: tStart, tEnd: tEnd, W: W, H: H };
+      accelChartInfo = { pad: pad, cW: cW, cH: cH, tStart: tStart, tEnd: tEnd, W: W, H: H, maxA: 0, maxS: 0 };
 
       function tToX(t) { return pad.left + ((t - tStart) / tRange) * cW; }
 
@@ -1793,6 +1798,7 @@
 
       var maxA = Math.min(Math.max.apply(null, inView.map(function (d) { return d.linMag; })) * 1.1, 60) || 1;
       var maxS = Math.max.apply(null, inView.map(function (d) { return d.speed; })) * 1.1 || 1;
+      accelChartInfo.maxA = maxA; accelChartInfo.maxS = maxS;
 
       ctx.strokeStyle = '#1a1a26'; ctx.lineWidth = 1;
       for (var i = 0; i <= 5; i++) {
@@ -1848,7 +1854,106 @@
         var t = tStart + (tRange / 4) * i;
         ctx.fillText(formatDuration(t), tToX(t), H - 6);
       }
+      accelChartImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setupChartSelection();
+    }
+
+    // ========== HOVER CROSSHAIR ==========
+    function findClosestInView(t) {
+      var inView = processedData.filter(function (d) { return d.t >= chartView.tStart && d.t <= chartView.tEnd; });
+      if (!inView.length) return null;
+      var best = inView[0], bestDist = Math.abs(inView[0].t - t);
+      for (var i = 1; i < inView.length; i++) {
+        var d = Math.abs(inView[i].t - t);
+        if (d < bestDist) { bestDist = d; best = inView[i]; }
+      }
+      return best;
+    }
+
+    function drawHoverTooltip(ctx, lines, colors, bx, by) {
+      ctx.font = '11px JetBrains Mono, monospace';
+      var maxW = 0;
+      for (var i = 0; i < lines.length; i++) maxW = Math.max(maxW, ctx.measureText(lines[i]).width);
+      var pad = 8, lineH = 16, bW = maxW + pad * 2, bH = lines.length * lineH + pad;
+      ctx.fillStyle = 'rgba(10,10,22,0.88)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(bx, by, bW, bH);
+      ctx.fill(); ctx.stroke();
+      for (var i = 0; i < lines.length; i++) {
+        ctx.fillStyle = colors[i];
+        ctx.fillText(lines[i], bx + pad, by + pad + (i + 0.75) * lineH);
+      }
+    }
+
+    function setupSpeedChartHover() {
+      var canvas = document.getElementById('speed-chart');
+      canvas.onmousemove = function (e) {
+        if (!speedChartImageData) return;
+        var si = speedChartInfo;
+        var rect = canvas.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var ctx = canvas.getContext('2d');
+        ctx.putImageData(speedChartImageData, 0, 0);
+        if (x < si.pad.left || x > si.pad.left + si.cW) return;
+        var t = si.tStart + ((x - si.pad.left) / si.cW) * (si.tEnd - si.tStart);
+        var pt = findClosestInView(t);
+        if (!pt) return;
+        var px = si.pad.left + ((pt.t - si.tStart) / (si.tEnd - si.tStart)) * si.cW;
+        var py = si.pad.top + si.cH - (pt.speed / si.maxS) * si.cH;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(px, si.pad.top); ctx.lineTo(px, si.pad.top + si.cH); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fillStyle = '#00b8ff'; ctx.fill();
+        var lines = [pt.speed.toFixed(1) + ' km/h', formatDuration(pt.t)];
+        var colors = ['#00b8ff', '#8888a0'];
+        var bx = px + 10, by = py - 10;
+        ctx.font = '11px JetBrains Mono, monospace';
+        var bW = Math.max(ctx.measureText(lines[0]).width, ctx.measureText(lines[1]).width) + 16;
+        if (bx + bW > si.W - si.pad.right) bx = px - bW - 10;
+        if (by < si.pad.top) by = si.pad.top + 4;
+        ctx.textAlign = 'left';
+        drawHoverTooltip(ctx, lines, colors, bx, by);
+        ctx.restore();
+      };
+      canvas.onmouseleave = function () {
+        if (speedChartImageData) canvas.getContext('2d').putImageData(speedChartImageData, 0, 0);
+      };
+    }
+
+    function drawAccelHover(clientX) {
+      if (!accelChartImageData) return;
+      var canvas = document.getElementById('accel-chart');
+      var ai = accelChartInfo;
+      var rect = canvas.getBoundingClientRect();
+      var x = clientX - rect.left;
+      var ctx = canvas.getContext('2d');
+      ctx.putImageData(accelChartImageData, 0, 0);
+      if (x < ai.pad.left || x > ai.pad.left + ai.cW) return;
+      var t = ai.tStart + ((x - ai.pad.left) / ai.cW) * (ai.tEnd - ai.tStart);
+      var pt = findClosestInView(t);
+      if (!pt) return;
+      var px = ai.pad.left + ((pt.t - ai.tStart) / (ai.tEnd - ai.tStart)) * ai.cW;
+      var pyA = ai.pad.top + ai.cH - (Math.min(pt.linMag, ai.maxA) / ai.maxA) * ai.cH;
+      var pyS = ai.pad.top + ai.cH - (pt.speed / ai.maxS) * ai.cH;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(px, ai.pad.top); ctx.lineTo(px, ai.pad.top + ai.cH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(px, pyA, 4, 0, Math.PI * 2); ctx.fillStyle = '#00e5a0'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px, pyS, 4, 0, Math.PI * 2); ctx.fillStyle = '#00b8ff'; ctx.fill();
+      var lines = [pt.linMag.toFixed(1) + ' m/s²', pt.speed.toFixed(1) + ' km/h', formatDuration(pt.t)];
+      var colors = ['#00e5a0', '#00b8ff', '#8888a0'];
+      ctx.font = '11px JetBrains Mono, monospace';
+      var bW = Math.max(ctx.measureText(lines[0]).width, ctx.measureText(lines[1]).width, ctx.measureText(lines[2]).width) + 16;
+      var bx = px + 10, by = Math.min(pyA, pyS) - 10;
+      if (bx + bW > ai.W - ai.pad.right) bx = px - bW - 10;
+      if (by < ai.pad.top) by = ai.pad.top + 4;
+      ctx.textAlign = 'left';
+      drawHoverTooltip(ctx, lines, colors, bx, by);
+      ctx.restore();
     }
 
     // ========== SPLIT SELECTION ==========
@@ -1873,22 +1978,31 @@
         overlay.style.display = 'block'; overlay.style.width = '0px';
       };
       canvas.onmousemove = function (e) {
-        if (!isDragging) return;
-        selEnd = xToTime(e.clientX);
-        overlay.style.left = Math.min(timeToX(selStart), timeToX(selEnd)) + 'px';
-        overlay.style.width = Math.abs(timeToX(selEnd) - timeToX(selStart)) + 'px';
+        if (isDragging) {
+          selEnd = xToTime(e.clientX);
+          overlay.style.left = Math.min(timeToX(selStart), timeToX(selEnd)) + 'px';
+          overlay.style.width = Math.abs(timeToX(selEnd) - timeToX(selStart)) + 'px';
+        } else {
+          drawAccelHover(e.clientX);
+        }
       };
       canvas.onmouseup = function (e) {
         if (!isDragging) return;
         isDragging = false; selEnd = xToTime(e.clientX);
         if (Math.abs(selEnd - selStart) > 0.3) {
-          document.getElementById('split-name-input').style.display = 'inline-block';
-          document.getElementById('split-name-input').focus();
+          var nameInput = document.getElementById('split-name-input');
+          nameInput.value = splits.length === 0 ? '1st Half' : (splits.length === 1 ? '2nd Half' : '');
+          nameInput.style.display = 'inline-block';
+          nameInput.select();
+          nameInput.focus();
           document.getElementById('save-split-btn').style.display = 'inline-block';
           document.getElementById('clear-sel-btn').style.display = 'inline-block';
         } else clearSelection();
       };
-      canvas.onmouseleave = function () { isDragging = false; };
+      canvas.onmouseleave = function () {
+        isDragging = false;
+        if (accelChartImageData) canvas.getContext('2d').putImageData(accelChartImageData, 0, 0);
+      };
     }
 
     function clearSelection() {
