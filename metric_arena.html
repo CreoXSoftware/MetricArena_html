@@ -731,6 +731,18 @@
       background: rgba(255, 107, 107, 0.15);
     }
 
+    .split-card.selected-split {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 2px rgba(0, 229, 160, 0.18);
+      background: rgba(0, 229, 160, 0.03);
+    }
+
+    .split-card.selected-split-combined {
+      border-color: var(--accent2) !important;
+      box-shadow: 0 0 0 2px rgba(0, 184, 255, 0.18);
+      background: rgba(0, 184, 255, 0.03);
+    }
+
     /* Speed zone bar */
     .zone-bar {
       display: flex;
@@ -1028,7 +1040,7 @@
         <button class="btn btn-accent" id="save-split-btn" style="display:none" onclick="saveSplit()">Save
           Split</button>
         <button class="btn" id="clear-sel-btn" style="display:none" onclick="clearSelection()">Clear</button>
-        <span class="split-hint">Click and drag on the chart to select a time range</span>
+        <span class="split-hint">Drag to select a range · Click a saved split to highlight it on the chart</span>
       </div>
     </div>
 
@@ -1070,6 +1082,9 @@
     var accelZoomReady = false;
     var speedChartImageData = null;
     var accelChartImageData = null;
+    var accelChartBaseImageData = null;
+    var selectedSplitId = null;
+    var resizingBoundary = null; // { splitId, side: 'left'|'right' }
 
     // ========== ATHLETE PROFILE ==========
     function getProfile() {
@@ -1202,6 +1217,8 @@
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('upload-screen').style.display = 'flex';
       splits = [];
+      selectedSplitId = null;
+      resizingBoundary = null;
       chartView.tStart = 0; chartView.tEnd = 0;
       speedZoomReady = false; accelZoomReady = false;
       fileInput.value = '';
@@ -1854,6 +1871,8 @@
         var t = tStart + (tRange / 4) * i;
         ctx.fillText(formatDuration(t), tToX(t), H - 6);
       }
+      accelChartBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (selectedSplitId) drawSplitOverlays(ctx, accelChartInfo, null);
       accelChartImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setupChartSelection();
     }
@@ -1956,10 +1975,117 @@
       ctx.restore();
     }
 
+    // ========== SPLIT HIGHLIGHT ==========
+    function selectSplit(id) {
+      selectedSplitId = (selectedSplitId === id) ? null : id;
+      renderAccelChart();
+      renderSplits();
+    }
+
+    function drawSplitOverlays(ctx, ai, override) {
+      if (!selectedSplitId || !ai) return;
+      var sel = splits.find(function (s) { return s.id === selectedSplitId; });
+      if (!sel) return;
+
+      var fillColors = [
+        'rgba(0,229,160,0.13)', 'rgba(0,184,255,0.13)',
+        'rgba(255,170,0,0.13)', 'rgba(255,107,107,0.13)', 'rgba(167,139,250,0.13)'
+      ];
+      var strokeColors = ['#00e5a0', '#00b8ff', '#ffaa00', '#ff6b6b', '#a78bfa'];
+
+      function tX(t) {
+        return ai.pad.left + ((t - ai.tStart) / (ai.tEnd - ai.tStart)) * ai.cW;
+      }
+
+      function drawRange(tA, tB, ci) {
+        var xL = tX(tA);
+        var xR = tX(tB);
+        var midY = ai.pad.top + ai.cH / 2;
+        var col = fillColors[ci % fillColors.length];
+        var bord = strokeColors[ci % strokeColors.length];
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(ai.pad.left, ai.pad.top, ai.cW, ai.cH);
+        ctx.clip();
+        ctx.fillStyle = col;
+        ctx.fillRect(xL, ai.pad.top, xR - xL, ai.cH);
+        ctx.strokeStyle = bord;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(xL, ai.pad.top); ctx.lineTo(xL, ai.pad.top + ai.cH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(xR, ai.pad.top); ctx.lineTo(xR, ai.pad.top + ai.cH); ctx.stroke();
+        ctx.restore();
+
+        // Drag handle circles (drawn outside clip so they're fully visible)
+        function drawHandle(hx, isLeft) {
+          if (hx < ai.pad.left - 14 || hx > ai.pad.left + ai.cW + 14) return;
+          ctx.fillStyle = bord;
+          ctx.beginPath(); ctx.arc(hx, midY, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(0,0,0,0.75)';
+          ctx.beginPath();
+          if (isLeft) {
+            ctx.moveTo(hx - 3, midY - 4); ctx.lineTo(hx + 3, midY); ctx.lineTo(hx - 3, midY + 4);
+          } else {
+            ctx.moveTo(hx + 3, midY - 4); ctx.lineTo(hx - 3, midY); ctx.lineTo(hx + 3, midY + 4);
+          }
+          ctx.fill();
+        }
+        drawHandle(xL, true);
+        drawHandle(xR, false);
+      }
+
+      if (sel.isCombined && sel.sourceIds) {
+        sel.sourceIds.forEach(function (sid, i) {
+          var child = splits.find(function (s) { return s.id === sid; });
+          if (!child) return;
+          var tA = child.tStart, tB = child.tEnd;
+          if (override && override.splitId === sid) {
+            if (override.side === 'left') tA = Math.min(override.t, tB - 0.5);
+            else tB = Math.max(override.t, tA + 0.5);
+          }
+          drawRange(tA, tB, 1); // all children use accent2 blue
+        });
+      } else {
+        var tA = sel.tStart, tB = sel.tEnd;
+        if (override && override.splitId === sel.id) {
+          if (override.side === 'left') tA = Math.min(override.t, tB - 0.5);
+          else tB = Math.max(override.t, tA + 0.5);
+        }
+        drawRange(tA, tB, 0);
+      }
+    }
+
+    function getHandlesForSelectedSplit() {
+      if (!selectedSplitId || !accelChartInfo) return [];
+      var sel = splits.find(function (s) { return s.id === selectedSplitId; });
+      if (!sel) return [];
+      var ai = accelChartInfo;
+      var handles = [];
+
+      function pushHandles(split) {
+        var xL = ai.pad.left + ((split.tStart - ai.tStart) / (ai.tEnd - ai.tStart)) * ai.cW;
+        var xR = ai.pad.left + ((split.tEnd - ai.tStart) / (ai.tEnd - ai.tStart)) * ai.cW;
+        handles.push({ splitId: split.id, side: 'left', x: xL });
+        handles.push({ splitId: split.id, side: 'right', x: xR });
+      }
+
+      if (sel.isCombined && sel.sourceIds) {
+        sel.sourceIds.forEach(function (sid) {
+          var child = splits.find(function (s) { return s.id === sid; });
+          if (child) pushHandles(child);
+        });
+      } else {
+        pushHandles(sel);
+      }
+      return handles;
+    }
+
     // ========== SPLIT SELECTION ==========
     function setupChartSelection() {
       var canvas = document.getElementById('accel-chart');
       var overlay = document.getElementById('selection-overlay');
+      var HANDLE_R = 10;
 
       function xToTime(clientX) {
         var rect = canvas.getBoundingClientRect();
@@ -1972,21 +2098,73 @@
         var ai = accelChartInfo;
         return ai.pad.left + ((t - ai.tStart) / (ai.tEnd - ai.tStart)) * ai.cW;
       }
+      function getHandleAt(clientX) {
+        var rect = canvas.getBoundingClientRect();
+        var mx = clientX - rect.left;
+        var handles = getHandlesForSelectedSplit();
+        for (var h = 0; h < handles.length; h++) {
+          if (Math.abs(mx - handles[h].x) <= HANDLE_R) return handles[h];
+        }
+        return null;
+      }
 
       canvas.onmousedown = function (e) {
+        var handle = getHandleAt(e.clientX);
+        if (handle) {
+          resizingBoundary = { splitId: handle.splitId, side: handle.side };
+          return;
+        }
         isDragging = true; selStart = xToTime(e.clientX); selEnd = selStart;
         overlay.style.display = 'block'; overlay.style.width = '0px';
       };
+
       canvas.onmousemove = function (e) {
+        if (resizingBoundary) {
+          var newT = xToTime(e.clientX);
+          if (accelChartBaseImageData) {
+            var ctx2 = canvas.getContext('2d');
+            ctx2.putImageData(accelChartBaseImageData, 0, 0);
+            drawSplitOverlays(ctx2, accelChartInfo, { splitId: resizingBoundary.splitId, side: resizingBoundary.side, t: newT });
+          }
+          return;
+        }
         if (isDragging) {
           selEnd = xToTime(e.clientX);
           overlay.style.left = Math.min(timeToX(selStart), timeToX(selEnd)) + 'px';
           overlay.style.width = Math.abs(timeToX(selEnd) - timeToX(selStart)) + 'px';
         } else {
+          var handle = getHandleAt(e.clientX);
+          canvas.style.cursor = handle ? 'ew-resize' : 'crosshair';
           drawAccelHover(e.clientX);
         }
       };
+
       canvas.onmouseup = function (e) {
+        if (resizingBoundary) {
+          var newT = xToTime(e.clientX);
+          var split = splits.find(function (s) { return s.id === resizingBoundary.splitId; });
+          if (split) {
+            if (resizingBoundary.side === 'left') split.tStart = Math.min(newT, split.tEnd - 0.5);
+            else split.tEnd = Math.max(newT, split.tStart + 0.5);
+            // Recalculate split metrics
+            var splitData = processedData.filter(function (d) { return d.t >= split.tStart && d.t <= split.tEnd; });
+            split.metrics = computeMetrics(splitData) || split.metrics;
+            // Recalculate parent combined splits that reference this split
+            splits.forEach(function (s) {
+              if (s.isCombined && s.sourceIds && s.sourceIds.indexOf(split.id) !== -1) {
+                var children = splits.filter(function (c) { return s.sourceIds.indexOf(c.id) !== -1; });
+                s.tStart = Math.min.apply(null, children.map(function (c) { return c.tStart; }));
+                s.tEnd = Math.max.apply(null, children.map(function (c) { return c.tEnd; }));
+                s.metrics = aggregateMetrics(children.map(function (c) { return c.metrics; }));
+              }
+            });
+          }
+          resizingBoundary = null;
+          renderAccelChart();
+          renderSpeedChart();
+          renderSplits();
+          return;
+        }
         if (!isDragging) return;
         isDragging = false; selEnd = xToTime(e.clientX);
         if (Math.abs(selEnd - selStart) > 0.3) {
@@ -1999,8 +2177,14 @@
           document.getElementById('clear-sel-btn').style.display = 'inline-block';
         } else clearSelection();
       };
+
       canvas.onmouseleave = function () {
+        if (resizingBoundary) {
+          resizingBoundary = null;
+          if (accelChartImageData) canvas.getContext('2d').putImageData(accelChartImageData, 0, 0);
+        }
         isDragging = false;
+        canvas.style.cursor = 'crosshair';
         if (accelChartImageData) canvas.getContext('2d').putImageData(accelChartImageData, 0, 0);
       };
     }
@@ -2036,10 +2220,13 @@
         var badge = s.isCombined
           ? '<span style="font-size:10px;font-weight:600;background:rgba(0,184,255,0.15);color:var(--accent2);border:1px solid var(--accent2);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle;">COMBINED</span>'
           : '';
-        return '<div class="split-card" style="' + (s.isCombined ? 'border-color:var(--accent2);' : '') + '"><div class="split-header">' +
+        var isSelected = selectedSplitId === s.id;
+        var selClass = isSelected ? (s.isCombined ? ' selected-split-combined' : ' selected-split') : '';
+        var baseStyle = s.isCombined ? 'border-color:var(--accent2);' : '';
+        return '<div class="split-card' + selClass + '" data-split-id="' + s.id + '" onclick="selectSplit(' + s.id + ')" style="cursor:pointer;' + baseStyle + '"><div class="split-header">' +
           '<span class="split-name" title="Click to rename" onclick="startRenameSplit(' + s.id + ', this, event)">' + s.name + '</span>' + badge + '<div>' +
           '<span class="split-time">' + formatDuration(s.tStart) + ' \u2192 ' + formatDuration(s.tEnd) + '</span> ' +
-          '<button class="delete-split" onclick="deleteSplit(' + s.id + ')">\u2715</button></div></div>' +
+          '<button class="delete-split" onclick="deleteSplit(' + s.id + ');event.stopPropagation()">\u2715</button></div></div>' +
           (s.isCombined ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">From: ' + s.sourceSplits.join(', ') + '</div>' : '') +
           '<div class="split-metrics">' +
           sm('Max Speed', m.maxSpeed.toFixed(1) + ' km/h') +
@@ -2121,7 +2308,9 @@
     }
 
     function deleteSplit(id) {
+      if (selectedSplitId === id) selectedSplitId = null;
       splits = splits.filter(function (s) { return s.id !== id; });
+      renderAccelChart();
       renderSplits();
     }
 
@@ -2179,6 +2368,7 @@
         tStart: tMin,
         tEnd: tMax,
         isCombined: true,
+        sourceIds: ids,
         sourceSplits: selected.map(function (s) { return s.name; }),
         metrics: aggregateMetrics(selected.map(function (s) { return s.metrics; }))
       });
