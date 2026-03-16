@@ -184,52 +184,6 @@
       pointer-events: none;
     }
 
-    .upload-box {
-      text-align: center;
-      padding: 50px 60px;
-      border: 2px dashed var(--border);
-      border-radius: 24px;
-      background: var(--surface);
-      cursor: pointer;
-      transition: all 0.3s;
-      max-width: 520px;
-      width: 90%;
-    }
-
-    .upload-box:hover,
-    .upload-box.dragover {
-      border-color: var(--accent);
-      background: rgba(0, 229, 160, 0.03);
-      transform: translateY(-2px);
-    }
-
-    .upload-box h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      background: var(--gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .upload-box p {
-      color: var(--text-dim);
-      font-size: 15px;
-      margin-top: 8px;
-    }
-
-    .upload-icon {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 20px;
-      border-radius: 16px;
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-    }
-
     #file-input {
       display: none;
     }
@@ -237,17 +191,10 @@
     /* ========== Upload screen two-panel layout ========== */
     .upload-panels {
       display: flex;
-      gap: 16px;
-      max-width: 900px;
+      gap: 12px;
+      max-width: 860px;
       width: 95%;
       align-items: stretch;
-    }
-
-    .upload-panels .upload-box {
-      flex: 1;
-      min-width: 0;
-      width: auto;
-      max-width: none;
     }
 
     .upload-or {
@@ -257,11 +204,11 @@
       justify-content: center;
       gap: 8px;
       color: var(--text-dim);
-      font-size: 12px;
+      font-size: 11px;
       letter-spacing: 2px;
       text-transform: uppercase;
       flex-shrink: 0;
-      padding: 0 4px;
+      padding: 0 2px;
     }
 
     .upload-or::before,
@@ -272,31 +219,20 @@
       background: var(--border);
     }
 
-    /* ========== BLE Card ========== */
-    .ble-card {
-      flex: 1;
-      min-width: 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 32px 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      transition: border-color 0.3s;
-    }
-
-    .ble-card.connected {
-      border-color: rgba(0, 181, 255, 0.35);
-    }
-
-    .ble-card-header {
+    /* ========== Shared panel card style ========== */
+    .panel-card {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: border-color 0.25s, background 0.25s;
+      min-width: 0;
     }
 
-    .ble-icon {
+    .panel-icon {
       width: 40px;
       height: 40px;
       border-radius: 12px;
@@ -308,15 +244,73 @@
       flex-shrink: 0;
     }
 
-    .ble-card-title {
-      font-size: 17px;
+    .panel-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .panel-title {
+      font-size: 15px;
       font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .panel-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    /* ========== Upload box ========== */
+    .upload-box {
+      flex: 1;
+      cursor: pointer;
+      border-style: dashed;
+      border-width: 1px;
+      align-items: center;
+    }
+
+    .upload-box:hover,
+    .upload-box.dragover {
+      border-color: var(--accent);
+      background: rgba(0, 229, 160, 0.03);
+    }
+
+    .upload-box:hover .panel-icon {
+      background: rgba(0, 229, 160, 0.12);
+    }
+
+    /* ========== BLE Card ========== */
+    .ble-card {
+      flex: 1;
+      flex-direction: column;
+      align-items: stretch;
+      transition: flex 0.3s ease, border-color 0.25s;
+    }
+
+    .ble-card.connected {
+      border-color: rgba(0, 184, 255, 0.35);
+      flex: 1.6;
+      align-items: flex-start;
+    }
+
+    .ble-card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .ble-card-header .panel-body {
+      flex: 1;
     }
 
     .ble-device-name {
       font-size: 12px;
       color: var(--text-dim);
-      margin-top: 1px;
+      margin-top: 3px;
     }
 
     /* BLE status dot (animated when connected) */
@@ -347,8 +341,8 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 220px;
-      min-height: 80px;
+      max-height: 200px;
+      min-height: 60px;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
     }
@@ -447,19 +441,18 @@
 
     .ble-connect-area {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      flex: 1;
-      gap: 12px;
-      min-height: 120px;
+      gap: 10px;
+      padding-top: 10px;
+      flex-wrap: wrap;
     }
 
     .ble-connect-hint {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-dim);
-      text-align: center;
-      line-height: 1.5;
+      line-height: 1.4;
+      flex: 1;
+      min-width: 120px;
     }
 
     .ble-actions {
@@ -529,9 +522,14 @@
     }
 
     /* Responsive: stack panels on narrow screens */
-    @media (max-width: 640px) {
+    @media (max-width: 600px) {
       .upload-panels {
         flex-direction: column;
+        width: 92%;
+      }
+      .upload-box, .ble-card, .ble-card.connected {
+        flex: none;
+        width: 100%;
       }
       .upload-or {
         flex-direction: row;
@@ -1192,40 +1190,40 @@
       <div class="brand-tagline">Performance Session Analytics</div>
     </div>
 
-    <div class="upload-panels">
+    <div class="upload-panels" id="upload-panels">
       <!-- Local file drop zone -->
-      <div class="upload-box" id="upload-box">
-        <div class="upload-icon">📂</div>
-        <h1>Load Session</h1>
-        <p>Drop your CSV or binary (.bin) file here<br>or click to browse</p>
+      <div class="panel-card upload-box" id="upload-box">
+        <div class="panel-icon">📂</div>
+        <div class="panel-body">
+          <div class="panel-title">Load Session</div>
+          <div class="panel-subtitle">Drop a CSV or .bin file here, or click to browse</div>
+        </div>
         <input type="file" id="file-input" accept=".csv,.bin">
       </div>
 
       <div class="upload-or">or</div>
 
       <!-- BLE Device Card -->
-      <div class="ble-card" id="ble-card">
+      <div class="panel-card ble-card" id="ble-card">
         <div class="ble-card-header">
-          <div class="ble-icon">📶</div>
-          <div>
-            <div class="ble-card-title">Device Files</div>
+          <div class="panel-icon">📶</div>
+          <div class="panel-body">
+            <div class="panel-title">Device Files</div>
             <div class="ble-device-name" id="ble-device-name">Not connected</div>
           </div>
-          <span class="ble-dot" id="ble-header-dot" style="margin-left:auto"></span>
+          <span class="ble-dot" id="ble-header-dot"></span>
         </div>
 
         <!-- Not connected -->
         <div class="ble-connect-area" id="ble-connect-area">
-          <div class="ble-connect-hint">Pair your MetricAthlete device<br>to browse and download sessions</div>
-          <button class="btn" id="ble-connect-btn" onclick="connectBLE()">Connect Device</button>
+          <div class="ble-connect-hint">Pair your MetricAthlete device to browse sessions</div>
+          <button class="btn btn-small" id="ble-connect-btn" onclick="connectBLE()">Connect</button>
         </div>
 
         <!-- Connected: file list -->
-        <div id="ble-connected-area" style="display:none;flex:1;flex-direction:column;gap:12px">
+        <div id="ble-connected-area" style="display:none;flex-direction:column;gap:10px;margin-top:12px">
           <div class="ble-file-list" id="ble-file-list">
-            <div class="ble-empty" id="ble-file-empty">
-              <span>🔄</span>Fetching file list…
-            </div>
+            <div class="ble-empty" id="ble-file-empty"><span>🔄</span>Fetching file list…</div>
           </div>
           <div id="ble-status"></div>
           <div class="ble-progress" id="ble-progress">
@@ -1705,7 +1703,7 @@
       area.style.gap = '12px';
       document.getElementById('ble-device-name').textContent = deviceName;
       document.getElementById('ble-header-dot').className = 'ble-dot connected';
-      document.getElementById('ble-card').className = 'ble-card connected';
+      document.getElementById('ble-card').className = 'panel-card ble-card connected';
       // Dashboard badge
       var badge = document.getElementById('ble-header-badge');
       if (badge) {
@@ -1720,7 +1718,7 @@
       document.getElementById('ble-connected-area').style.display = 'none';
       document.getElementById('ble-device-name').textContent = 'Not connected';
       document.getElementById('ble-header-dot').className = 'ble-dot';
-      document.getElementById('ble-card').className = 'ble-card';
+      document.getElementById('ble-card').className = 'panel-card ble-card';
       var badge = document.getElementById('ble-header-badge');
       if (badge) badge.className = 'ble-header-badge';
       setBLEStatus('');
