@@ -330,8 +330,15 @@
     }
 
     @keyframes blePulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
     }
 
     /* File list */
@@ -527,15 +534,20 @@
         flex-direction: column;
         width: 92%;
       }
-      .upload-box, .ble-card, .ble-card.connected {
+
+      .upload-box,
+      .ble-card,
+      .ble-card.connected {
         flex: none;
         width: 100%;
       }
+
       .upload-or {
         flex-direction: row;
         height: auto;
         padding: 0;
       }
+
       .upload-or::before,
       .upload-or::after {
         width: auto;
@@ -1136,23 +1148,29 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+
     .export-dropdown {
       position: relative;
     }
+
     .export-menu {
       display: none;
       position: absolute;
       top: calc(100% + 4px);
       right: 0;
       background: var(--surface);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 6px;
       min-width: 164px;
       z-index: 100;
       overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
     }
-    .export-menu.open { display: block; }
+
+    .export-menu.open {
+      display: block;
+    }
+
     .export-menu button {
       display: block;
       width: 100%;
@@ -1165,7 +1183,10 @@
       font-size: 13px;
       font-family: inherit;
     }
-    .export-menu button:hover { background: rgba(255,255,255,0.07); }
+
+    .export-menu button:hover {
+      background: rgba(255, 255, 255, 0.07);
+    }
   </style>
 </head>
 
@@ -1264,7 +1285,8 @@
           </div>
           <div class="ble-actions">
             <button class="btn btn-small" id="ble-refresh-btn" onclick="refreshBLEFileList()">↻ Refresh</button>
-            <button class="btn btn-small btn-accent" id="ble-load-btn" onclick="loadBLESession()" disabled>Download</button>
+            <button class="btn btn-small btn-accent" id="ble-load-btn" onclick="loadBLESession()"
+              disabled>Download</button>
             <button class="btn btn-small" id="ble-disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
           </div>
         </div>
@@ -1508,7 +1530,7 @@
       { id: 'runHyst', label: 'Run Hysteresis (off)', unit: 'km/h', min: 2, max: 15, step: 0.5, default: 5 },
       { id: 'highSpeedThresh', label: 'High-Speed Zone', unit: 'km/h', min: 8, max: 30, step: 0.5, default: 15 },
       { id: 'impactThresh', label: 'Impact Threshold', unit: 'm/s²', min: 2, max: 100, step: 0.5, default: 5 },
-      { id: 'impactBase', label: 'Impact Baseline (below)', unit: 'm/s²', min: 1, max: 10, step: 0.5, default: 3 },
+      { id: 'impactBase', label: 'Impact Baseline (below)', unit: 'm/s²', min: 1, max: 100, step: 0.5, default: 3 },
       { id: 'movingThresh', label: 'Moving Threshold', unit: 'km/h', min: 0.5, max: 5, step: 0.1, default: 1 },
       { id: 'zone1', label: 'Speed Zone 1 Upper', unit: 'km/h', min: 1, max: 10, step: 0.5, default: 5 },
       { id: 'zone2', label: 'Speed Zone 2 Upper', unit: 'km/h', min: 5, max: 18, step: 0.5, default: 10 },
@@ -1860,7 +1882,7 @@
       for (var i = 0; i < count; i++) {
         var name = parseFilename(bleListRxBuffer.slice(off, off + 32));
         off += 32;
-        var size = bleListRxBuffer[off] | (bleListRxBuffer[off+1] << 8) | (bleListRxBuffer[off+2] << 16) | (bleListRxBuffer[off+3] << 24);
+        var size = bleListRxBuffer[off] | (bleListRxBuffer[off + 1] << 8) | (bleListRxBuffer[off + 2] << 16) | (bleListRxBuffer[off + 3] << 24);
         off += 4;
         if (name) files.push({ name: name, size: size >>> 0 });
       }
