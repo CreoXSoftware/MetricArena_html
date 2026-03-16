@@ -234,6 +234,318 @@
       display: none;
     }
 
+    /* ========== Upload screen two-panel layout ========== */
+    .upload-panels {
+      display: flex;
+      gap: 16px;
+      max-width: 900px;
+      width: 95%;
+      align-items: stretch;
+    }
+
+    .upload-panels .upload-box {
+      flex: 1;
+      min-width: 0;
+      width: auto;
+      max-width: none;
+    }
+
+    .upload-or {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-dim);
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    .upload-or::before,
+    .upload-or::after {
+      content: '';
+      width: 1px;
+      flex: 1;
+      background: var(--border);
+    }
+
+    /* ========== BLE Card ========== */
+    .ble-card {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: border-color 0.3s;
+    }
+
+    .ble-card.connected {
+      border-color: rgba(0, 181, 255, 0.35);
+    }
+
+    .ble-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ble-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .ble-card-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .ble-device-name {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 1px;
+    }
+
+    /* BLE status dot (animated when connected) */
+    .ble-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .ble-dot.connected {
+      background: var(--accent2);
+      box-shadow: 0 0 6px rgba(0, 184, 255, 0.7);
+      animation: blePulse 2s ease-in-out infinite;
+    }
+
+    @keyframes blePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* File list */
+    .ble-file-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      min-height: 80px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .ble-file-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .ble-file-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .ble-file-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+    }
+
+    .ble-file-list::-webkit-scrollbar-thumb:hover {
+      background: var(--text-dim);
+    }
+
+    .ble-file-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--surface2);
+    }
+
+    .ble-file-item:hover {
+      border-color: rgba(0, 184, 255, 0.4);
+      background: rgba(0, 184, 255, 0.05);
+    }
+
+    .ble-file-item.selected {
+      border-color: var(--accent2);
+      background: rgba(0, 184, 255, 0.1);
+    }
+
+    .ble-file-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .ble-file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ble-file-date {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ble-file-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .ble-cached-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(0, 229, 160, 0.12);
+      border: 1px solid rgba(0, 229, 160, 0.3);
+      border-radius: 4px;
+      padding: 1px 5px;
+      vertical-align: middle;
+      margin-left: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .ble-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 80px;
+      color: var(--text-dim);
+      font-size: 13px;
+      text-align: center;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ble-connect-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      min-height: 120px;
+    }
+
+    .ble-connect-hint {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .ble-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ble-actions .btn {
+      flex: 1;
+    }
+
+    #ble-status {
+      font-size: 12px;
+      color: var(--text-dim);
+      min-height: 16px;
+      line-height: 1.4;
+    }
+
+    #ble-status.error {
+      color: var(--accent3);
+    }
+
+    .ble-progress {
+      display: none;
+    }
+
+    .ble-progress-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .ble-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.12s linear;
+    }
+
+    .ble-progress-text {
+      color: var(--text-dim);
+      font-size: 11px;
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* BLE indicator badge in dashboard header */
+    .ble-header-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--accent2);
+      background: rgba(0, 184, 255, 0.1);
+      border: 1px solid rgba(0, 184, 255, 0.25);
+      border-radius: 20px;
+      padding: 4px 10px;
+    }
+
+    .ble-header-badge.visible {
+      display: flex;
+    }
+
+    /* Responsive: stack panels on narrow screens */
+    @media (max-width: 640px) {
+      .upload-panels {
+        flex-direction: column;
+      }
+      .upload-or {
+        flex-direction: row;
+        height: auto;
+        padding: 0;
+      }
+      .upload-or::before,
+      .upload-or::after {
+        width: auto;
+        height: 1px;
+        flex: 1;
+      }
+    }
+
     /* ========== Profile Card (on upload screen) ========== */
     .profile-card {
       background: var(--surface);
@@ -389,6 +701,12 @@
       padding: 5px 12px;
       font-size: 12px;
       border-radius: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
     }
 
     /* ========== Collapsible Thresholds ========== */
@@ -874,11 +1192,55 @@
       <div class="brand-tagline">Performance Session Analytics</div>
     </div>
 
-    <div class="upload-box" id="upload-box">
-      <div class="upload-icon">📡</div>
-      <h1>Load Session</h1>
-      <p>Drop your CSV or binary (.bin) session file here<br>or click to browse</p>
-      <input type="file" id="file-input" accept=".csv,.bin">
+    <div class="upload-panels">
+      <!-- Local file drop zone -->
+      <div class="upload-box" id="upload-box">
+        <div class="upload-icon">📂</div>
+        <h1>Load Session</h1>
+        <p>Drop your CSV or binary (.bin) file here<br>or click to browse</p>
+        <input type="file" id="file-input" accept=".csv,.bin">
+      </div>
+
+      <div class="upload-or">or</div>
+
+      <!-- BLE Device Card -->
+      <div class="ble-card" id="ble-card">
+        <div class="ble-card-header">
+          <div class="ble-icon">📶</div>
+          <div>
+            <div class="ble-card-title">Device Files</div>
+            <div class="ble-device-name" id="ble-device-name">Not connected</div>
+          </div>
+          <span class="ble-dot" id="ble-header-dot" style="margin-left:auto"></span>
+        </div>
+
+        <!-- Not connected -->
+        <div class="ble-connect-area" id="ble-connect-area">
+          <div class="ble-connect-hint">Pair your MetricAthlete device<br>to browse and download sessions</div>
+          <button class="btn" id="ble-connect-btn" onclick="connectBLE()">Connect Device</button>
+        </div>
+
+        <!-- Connected: file list -->
+        <div id="ble-connected-area" style="display:none;flex:1;flex-direction:column;gap:12px">
+          <div class="ble-file-list" id="ble-file-list">
+            <div class="ble-empty" id="ble-file-empty">
+              <span>🔄</span>Fetching file list…
+            </div>
+          </div>
+          <div id="ble-status"></div>
+          <div class="ble-progress" id="ble-progress">
+            <div class="ble-progress-track">
+              <div class="ble-progress-fill" id="ble-progress-fill"></div>
+            </div>
+            <div class="ble-progress-text" id="ble-progress-text"></div>
+          </div>
+          <div class="ble-actions">
+            <button class="btn btn-small" id="ble-refresh-btn" onclick="refreshBLEFileList()">↻ Refresh</button>
+            <button class="btn btn-small btn-accent" id="ble-load-btn" onclick="loadBLESession()" disabled>Download</button>
+            <button class="btn btn-small" id="ble-disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="profile-card">
@@ -968,8 +1330,12 @@
         </div>
       </div>
       <div class="export-bar">
+        <div class="ble-header-badge" id="ble-header-badge">
+          <span class="ble-dot connected"></span>
+          <span id="ble-header-device-name">Device</span>
+        </div>
         <button class="btn" onclick="exportJSON()">Export JSON</button>
-        <button class="btn" onclick="showUpload()">New Session</button>
+        <button class="btn" onclick="showUpload()">Load Session</button>
       </div>
     </div>
 
@@ -1222,6 +1588,451 @@
       chartView.tStart = 0; chartView.tEnd = 0;
       speedZoomReady = false; accelZoomReady = false;
       fileInput.value = '';
+      resetBLEDownloadState();
+      if (isBLEConnected()) {
+        showBLEConnectedUI(bleDevice.name || 'BLE Device');
+        if (!bleAvailableFiles.length) {
+          setBLEStatus('Connected. Fetching file list…');
+          refreshBLEFileList();
+        } else {
+          renderBLEFileCards();
+          setBLEStatus('');
+        }
+      } else {
+        showBLEDisconnectedUI();
+      }
+    }
+
+    // ========== BLE ==========
+    var bleDevice = null;
+    var bleNotifyCharacteristic = null;
+    var bleWriteCharacteristic = null;
+    var bleAvailableFiles = [];
+    var bleSelectedFileIndex = -1;
+    var bleFileCache = {}; // filename → Uint8Array
+    var bleDownloadChunks = [];
+    var bleDownloadBytes = 0;
+    var bleExpectedFileSize = 0;
+    var bleSelectedFilename = '';
+    var bleDownloadIdleTimer = null;
+    var bleIsDownloading = false;
+    var bleListRxBuffer = new Uint8Array(0);
+    var bleRxFrameBuffer = new Uint8Array(0);
+
+    var bleProto = {
+      marker: 0xAE,
+      respFileList: 0x02,
+      respFileChunk: 0x03,
+      cmdRequestFileList: 0x05,
+      cmdDownloadFile: 0x06
+    };
+
+    var bleConfig = {
+      serviceUuid: '761993fb-ad28-4438-a7b0-6ab3f2e03816',
+      notifyCharacteristicUuid: '5e0c4072-ee4d-450d-90a5-a1fefdb84692',
+      writeCharacteristicUuid: 'fb4a9352-9bcd-4cc6-80e4-ae37d16ffbf1'
+    };
+
+    function isBLEConnected() {
+      return !!(bleDevice && bleDevice.gatt && bleDevice.gatt.connected && bleWriteCharacteristic);
+    }
+
+    // Format a BLE filename like 20250315_143022_v01.bin into human-readable local time
+    function formatBLEFilename(filename) {
+      var m = filename.match(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
+      if (!m) return filename;
+      // Treat as UTC
+      var utcDate = new Date(Date.UTC(
+        parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10),
+        parseInt(m[4], 10), parseInt(m[5], 10), parseInt(m[6], 10)
+      ));
+      var now = new Date();
+      var todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var yesterdayMidnight = new Date(todayMidnight - 86400000);
+      var localFileMidnight = new Date(utcDate.getFullYear(), utcDate.getMonth(), utcDate.getDate());
+      var timeStr = utcDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      var t = localFileMidnight.getTime();
+      if (t === todayMidnight.getTime()) return 'Today at ' + timeStr;
+      if (t === yesterdayMidnight.getTime()) return 'Yesterday at ' + timeStr;
+      var sameYear = utcDate.getFullYear() === now.getFullYear();
+      var dateStr = utcDate.toLocaleDateString([], sameYear
+        ? { weekday: 'short', month: 'short', day: 'numeric' }
+        : { month: 'short', day: 'numeric', year: 'numeric' });
+      return dateStr + ' at ' + timeStr;
+    }
+
+    function formatBytes(n) {
+      if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(2) + ' MB';
+      if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+      return n + ' B';
+    }
+
+    function concatBytes(a, b) {
+      var out = new Uint8Array(a.length + b.length);
+      out.set(a, 0); out.set(b, a.length);
+      return out;
+    }
+
+    function parseFilename(bytes) {
+      var text = new TextDecoder().decode(bytes);
+      var nullIdx = text.indexOf('\u0000');
+      return (nullIdx >= 0 ? text.slice(0, nullIdx) : text).trim();
+    }
+
+    function flattenBLEChunks() {
+      var out = new Uint8Array(bleDownloadBytes);
+      var pos = 0;
+      for (var i = 0; i < bleDownloadChunks.length; i++) {
+        out.set(bleDownloadChunks[i], pos);
+        pos += bleDownloadChunks[i].length;
+      }
+      return out;
+    }
+
+    // ---- UI helpers ----
+    function setBLEStatus(text, isError) {
+      var el = document.getElementById('ble-status');
+      if (!el) return;
+      el.textContent = text;
+      el.className = isError ? 'error' : '';
+    }
+
+    function showBLEConnectedUI(deviceName) {
+      document.getElementById('ble-connect-area').style.display = 'none';
+      var area = document.getElementById('ble-connected-area');
+      area.style.display = 'flex';
+      area.style.flexDirection = 'column';
+      area.style.gap = '12px';
+      document.getElementById('ble-device-name').textContent = deviceName;
+      document.getElementById('ble-header-dot').className = 'ble-dot connected';
+      document.getElementById('ble-card').className = 'ble-card connected';
+      // Dashboard badge
+      var badge = document.getElementById('ble-header-badge');
+      if (badge) {
+        badge.className = 'ble-header-badge visible';
+        document.getElementById('ble-header-device-name').textContent = deviceName;
+      }
+    }
+
+    function showBLEDisconnectedUI() {
+      document.getElementById('ble-connect-area').style.display = 'flex';
+      document.getElementById('ble-connect-btn').disabled = false;
+      document.getElementById('ble-connected-area').style.display = 'none';
+      document.getElementById('ble-device-name').textContent = 'Not connected';
+      document.getElementById('ble-header-dot').className = 'ble-dot';
+      document.getElementById('ble-card').className = 'ble-card';
+      var badge = document.getElementById('ble-header-badge');
+      if (badge) badge.className = 'ble-header-badge';
+      setBLEStatus('');
+      hideBLEProgress();
+    }
+
+    function updateBLEProgress(received, total) {
+      var wrap = document.getElementById('ble-progress');
+      var fill = document.getElementById('ble-progress-fill');
+      var text = document.getElementById('ble-progress-text');
+      wrap.style.display = 'block';
+      if (total > 0) {
+        var pct = Math.max(0, Math.min(100, (received / total) * 100));
+        fill.style.width = pct.toFixed(1) + '%';
+        text.textContent = pct.toFixed(1) + '% · ' + formatBytes(received) + ' / ' + formatBytes(total);
+      } else {
+        fill.style.width = '0%';
+        text.textContent = formatBytes(received);
+      }
+    }
+
+    function hideBLEProgress() {
+      var wrap = document.getElementById('ble-progress');
+      if (wrap) wrap.style.display = 'none';
+      var fill = document.getElementById('ble-progress-fill');
+      if (fill) fill.style.width = '0%';
+      var text = document.getElementById('ble-progress-text');
+      if (text) text.textContent = '';
+    }
+
+    function renderBLEFileCards() {
+      var list = document.getElementById('ble-file-list');
+      if (!bleAvailableFiles.length) {
+        list.innerHTML = '<div class="ble-empty" id="ble-file-empty"><span>📭</span>No files on device</div>';
+        document.getElementById('ble-load-btn').disabled = true;
+        return;
+      }
+      list.innerHTML = bleAvailableFiles.map(function (f, i) {
+        var label = formatBLEFilename(f.name);
+        var isSelected = i === bleSelectedFileIndex;
+        var isCached = !!bleFileCache[f.name];
+        return '<div class="ble-file-item' + (isSelected ? ' selected' : '') + '" onclick="selectBLEFile(' + i + ')">'
+          + '<span class="ble-file-icon">🗂</span>'
+          + '<div class="ble-file-info">'
+          + '<div class="ble-file-date">' + label + (isCached ? ' <span class="ble-cached-badge">cached</span>' : '') + '</div>'
+          + '<div class="ble-file-meta">' + f.name + ' · ' + formatBytes(f.size) + '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+      updateBLELoadBtn();
+    }
+
+    function updateBLELoadBtn() {
+      var btn = document.getElementById('ble-load-btn');
+      btn.disabled = bleSelectedFileIndex < 0;
+      if (bleSelectedFileIndex >= 0 && bleAvailableFiles[bleSelectedFileIndex]) {
+        var isCached = !!bleFileCache[bleAvailableFiles[bleSelectedFileIndex].name];
+        btn.textContent = isCached ? 'Open' : 'Download';
+      } else {
+        btn.textContent = 'Download';
+      }
+    }
+
+    function selectBLEFile(idx) {
+      bleSelectedFileIndex = idx;
+      renderBLEFileCards();
+    }
+
+    // ---- Protocol ----
+    async function writeBLECommand(bytes) {
+      if (!bleWriteCharacteristic) throw new Error('BLE write characteristic not ready');
+      if (bleWriteCharacteristic.writeValueWithoutResponse) {
+        await bleWriteCharacteristic.writeValueWithoutResponse(bytes);
+      } else {
+        await bleWriteCharacteristic.writeValue(bytes);
+      }
+    }
+
+    async function requestBLEFileList() {
+      bleListRxBuffer = new Uint8Array(0);
+      bleRxFrameBuffer = new Uint8Array(0);
+      bleAvailableFiles = [];
+      bleSelectedFileIndex = -1;
+      renderBLEFileCards();
+      setBLEStatus('Fetching file list…');
+      await writeBLECommand(new Uint8Array([bleProto.marker, bleProto.cmdRequestFileList, 1, 1]));
+    }
+
+    async function refreshBLEFileList() {
+      if (!isBLEConnected()) { setBLEStatus('Not connected.', true); return; }
+      try { await requestBLEFileList(); }
+      catch (err) { setBLEStatus('Could not refresh: ' + err.message, true); }
+    }
+
+    function tryParseBLEFileListFromBuffer() {
+      if (bleListRxBuffer.length < 1) return false;
+      var count = bleListRxBuffer[0];
+      var expectedLen = 1 + count * (32 + 4);
+      if (bleListRxBuffer.length < expectedLen) return false;
+      var files = [];
+      var off = 1;
+      for (var i = 0; i < count; i++) {
+        var name = parseFilename(bleListRxBuffer.slice(off, off + 32));
+        off += 32;
+        var size = bleListRxBuffer[off] | (bleListRxBuffer[off+1] << 8) | (bleListRxBuffer[off+2] << 16) | (bleListRxBuffer[off+3] << 24);
+        off += 4;
+        if (name) files.push({ name: name, size: size >>> 0 });
+      }
+      bleAvailableFiles = files;
+      renderBLEFileCards();
+      setBLEStatus(files.length ? files.length + ' file' + (files.length > 1 ? 's' : '') + ' — select one and tap Download' : 'No files found on device.');
+      bleListRxBuffer = bleListRxBuffer.length > expectedLen ? bleListRxBuffer.slice(expectedLen) : new Uint8Array(0);
+      return true;
+    }
+
+    function processBLERxFrames(rawBytes) {
+      bleRxFrameBuffer = concatBytes(bleRxFrameBuffer, rawBytes);
+      while (bleRxFrameBuffer.length >= 3) {
+        if (bleRxFrameBuffer[0] !== bleProto.marker) {
+          var markerIdx = bleRxFrameBuffer.indexOf(bleProto.marker);
+          if (markerIdx < 0) { bleRxFrameBuffer = new Uint8Array(0); return; }
+          bleRxFrameBuffer = bleRxFrameBuffer.slice(markerIdx);
+          if (bleRxFrameBuffer.length < 3) return;
+        }
+        var msgType = bleRxFrameBuffer[1];
+        var payloadLen = bleRxFrameBuffer[2];
+        var frameLen = 3 + payloadLen;
+        if (bleRxFrameBuffer.length < frameLen) return;
+        var payload = bleRxFrameBuffer.slice(3, frameLen);
+        if (msgType === bleProto.respFileList) {
+          bleListRxBuffer = concatBytes(bleListRxBuffer, payload);
+          tryParseBLEFileListFromBuffer();
+        } else if (msgType === bleProto.respFileChunk) {
+          onBLEFileChunk(payload);
+        }
+        bleRxFrameBuffer = bleRxFrameBuffer.slice(frameLen);
+      }
+    }
+
+    function resetBLEDownloadState() {
+      bleDownloadChunks = [];
+      bleDownloadBytes = 0;
+      bleExpectedFileSize = 0;
+      bleSelectedFilename = '';
+      bleIsDownloading = false;
+      if (bleDownloadIdleTimer) { clearTimeout(bleDownloadIdleTimer); bleDownloadIdleTimer = null; }
+      hideBLEProgress();
+    }
+
+    function scheduleBLEIdleFinalize() {
+      if (bleDownloadIdleTimer) clearTimeout(bleDownloadIdleTimer);
+      bleDownloadIdleTimer = setTimeout(function () { finalizeBLEDownload('idle timeout'); }, 200);
+    }
+
+    function startBLEDownloadSession(fileName, expectedSize) {
+      bleDownloadChunks = [];
+      bleDownloadBytes = 0;
+      bleExpectedFileSize = expectedSize || 0;
+      bleSelectedFilename = fileName;
+      bleIsDownloading = true;
+      if (bleDownloadIdleTimer) clearTimeout(bleDownloadIdleTimer);
+      updateBLEProgress(0, bleExpectedFileSize);
+    }
+
+    function onBLEFileChunk(payloadBytes) {
+      if (!bleIsDownloading || !payloadBytes.length) return;
+      var copy = new Uint8Array(payloadBytes.length);
+      copy.set(payloadBytes);
+      bleDownloadChunks.push(copy);
+      bleDownloadBytes += copy.length;
+      updateBLEProgress(bleDownloadBytes, bleExpectedFileSize);
+      setBLEStatus('Downloading… ' + formatBytes(bleDownloadBytes) + (bleExpectedFileSize ? ' / ' + formatBytes(bleExpectedFileSize) : ''));
+      if (!bleExpectedFileSize) { scheduleBLEIdleFinalize(); return; }
+      if (bleDownloadBytes >= bleExpectedFileSize) finalizeBLEDownload('complete');
+    }
+
+    function inferBinaryVersionFromName(fileName) {
+      var m = fileName.match(/_v(\d+)\.bin$/i);
+      if (m) return parseInt(m[1], 10);
+      return 1;
+    }
+
+    function finalizeBLEDownload(reason) {
+      if (!bleIsDownloading) return;
+      bleIsDownloading = false;
+      if (bleDownloadIdleTimer) { clearTimeout(bleDownloadIdleTimer); bleDownloadIdleTimer = null; }
+      if (!bleDownloadBytes) { setBLEStatus('No data received for ' + bleSelectedFilename + '.', true); return; }
+      var payload = flattenBLEChunks();
+      // Cache so the user doesn't need to re-download on returning to this screen
+      bleFileCache[bleSelectedFilename] = payload;
+      openBLEPayload(bleSelectedFilename, payload);
+    }
+
+    function onBLEDataChunk(event) {
+      var dv = event.target.value;
+      var bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+      processBLERxFrames(bytes);
+    }
+
+    async function connectBLE() {
+      if (!navigator.bluetooth) {
+        setBLEStatus('Web Bluetooth is not available. Use Chrome/Edge over HTTPS or localhost.', true);
+        return;
+      }
+      try {
+        setBLEStatus('Searching for devices…');
+        document.getElementById('ble-connect-btn').disabled = true;
+        resetBLEDownloadState();
+        bleDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [bleConfig.serviceUuid]
+        });
+        bleDevice.addEventListener('gattserverdisconnected', function () {
+          bleNotifyCharacteristic = null;
+          bleWriteCharacteristic = null;
+          resetBLEDownloadState();
+          bleAvailableFiles = [];
+          bleSelectedFileIndex = -1;
+          showBLEDisconnectedUI();
+          setBLEStatus('Device disconnected.');
+        });
+        setBLEStatus('Connecting…');
+        var server = await bleDevice.gatt.connect();
+        var service = await server.getPrimaryService(bleConfig.serviceUuid);
+        bleNotifyCharacteristic = await service.getCharacteristic(bleConfig.notifyCharacteristicUuid);
+        bleWriteCharacteristic = await service.getCharacteristic(bleConfig.writeCharacteristicUuid);
+        bleNotifyCharacteristic.addEventListener('characteristicvaluechanged', onBLEDataChunk);
+        await bleNotifyCharacteristic.startNotifications();
+        showBLEConnectedUI(bleDevice.name || 'BLE Device');
+        setBLEStatus('Connected. Fetching file list…');
+        await requestBLEFileList();
+      } catch (err) {
+        console.error('BLE connect error:', err);
+        document.getElementById('ble-connect-btn').disabled = false;
+        showBLEDisconnectedUI();
+        setBLEStatus('Connection failed: ' + err.message, true);
+      }
+    }
+
+    async function disconnectBLE() {
+      try {
+        if (bleNotifyCharacteristic) {
+          await bleNotifyCharacteristic.stopNotifications();
+          bleNotifyCharacteristic.removeEventListener('characteristicvaluechanged', onBLEDataChunk);
+        }
+      } catch (e) { /* ignore */ }
+      if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+      bleNotifyCharacteristic = null;
+      bleWriteCharacteristic = null;
+      bleAvailableFiles = [];
+      bleSelectedFileIndex = -1;
+      bleRxFrameBuffer = new Uint8Array(0);
+      bleListRxBuffer = new Uint8Array(0);
+      resetBLEDownloadState();
+      showBLEDisconnectedUI();
+    }
+
+    async function loadBLESession() {
+      if (bleSelectedFileIndex < 0 || bleSelectedFileIndex >= bleAvailableFiles.length) {
+        setBLEStatus('Select a file first.', true); return;
+      }
+      var picked = bleAvailableFiles[bleSelectedFileIndex];
+      // Use cache if available — no need to re-download
+      if (bleFileCache[picked.name]) {
+        openBLEPayload(picked.name, bleFileCache[picked.name]);
+        return;
+      }
+      if (!isBLEConnected()) { setBLEStatus('Not connected.', true); return; }
+      var filenameBytes = new TextEncoder().encode(picked.name);
+      if (filenameBytes.length > 255) { setBLEStatus('Filename too long.', true); return; }
+      var cmd = new Uint8Array(3 + filenameBytes.length);
+      cmd[0] = bleProto.marker; cmd[1] = bleProto.cmdDownloadFile; cmd[2] = filenameBytes.length;
+      cmd.set(filenameBytes, 3);
+      try {
+        startBLEDownloadSession(picked.name, picked.size);
+        setBLEStatus('Requesting ' + picked.name + '…');
+        await writeBLECommand(cmd);
+      } catch (err) {
+        resetBLEDownloadState();
+        setBLEStatus('Download failed: ' + err.message, true);
+      }
+    }
+
+    function openBLEPayload(filename, payload) {
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      setTimeout(function () {
+        try {
+          var binVersion = inferBinaryVersionFromName(filename);
+          var ab = payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength);
+          parseBinary(ab, binVersion);
+          processSession();
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          renderThresholdSliders();
+          if (bleDevice) {
+            var badge = document.getElementById('ble-header-badge');
+            if (badge) {
+              badge.className = 'ble-header-badge visible';
+              document.getElementById('ble-header-device-name').textContent = bleDevice.name || 'Device';
+            }
+          }
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () { renderDashboard(); });
+          });
+        } catch (err) {
+          console.error('BLE parse error:', err);
+          document.getElementById('loading').style.display = 'none';
+          showUpload();
+          setBLEStatus('Could not parse file: ' + err.message, true);
+        }
+      }, 50);
     }
 
     // ========== BINARY PARSING ==========
