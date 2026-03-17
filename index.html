@@ -388,6 +388,25 @@
       background: rgba(0, 184, 255, 0.05);
     }
 
+    .ble-delete-btn {
+      background: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text-dim);
+      padding: 4px 7px;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .ble-delete-btn:hover {
+      color: var(--accent3);
+      background: rgba(255, 107, 107, 0.12);
+      border-color: rgba(255, 107, 107, 0.3);
+    }
+
     .ble-file-item.selected {
       border-color: var(--accent2);
       background: rgba(0, 184, 255, 0.1);
@@ -1699,7 +1718,8 @@
       respFileList: 0x02,
       respFileChunk: 0x03,
       cmdRequestFileList: 0x05,
-      cmdDownloadFile: 0x06
+      cmdDownloadFile: 0x06,
+      cmdDeleteFile: 0x07
     };
 
     var bleConfig = {
@@ -1859,6 +1879,7 @@
           + '<div class="ble-file-date">' + label + (isCached ? ' <span class="ble-cached-badge">cached</span>' : '') + '</div>'
           + '<div class="ble-file-meta">' + f.name + ' · ' + formatBytes(f.size) + '</div>'
           + '</div>'
+          + '<button class="ble-delete-btn" title="Delete file" onclick="event.stopPropagation();deleteBLEFile(\'' + f.name + '\')">🗑</button>'
           + '</div>';
       }).join('');
       updateBLELoadBtn();
@@ -1878,6 +1899,23 @@
     function selectBLEFile(idx) {
       bleSelectedFileIndex = idx;
       renderBLEFileCards();
+    }
+
+    async function deleteBLEFile(filename) {
+      if (!isBLEConnected()) return;
+      var enc = new TextEncoder();
+      var filenameBytes = enc.encode(filename);
+      var cmd = new Uint8Array(3 + filenameBytes.length);
+      cmd[0] = bleProto.marker; cmd[1] = bleProto.cmdDeleteFile; cmd[2] = filenameBytes.length;
+      cmd.set(filenameBytes, 3);
+      setBLEStatus('Deleting ' + filename + '…');
+      try {
+        await writeBLECommand(cmd);
+        await new Promise(function (resolve) { setTimeout(resolve, 500); });
+        await requestBLEFileList();
+      } catch (err) {
+        setBLEStatus('Delete failed: ' + err.message, true);
+      }
     }
 
     // ---- Protocol ----
