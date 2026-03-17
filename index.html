@@ -446,6 +446,22 @@
       gap: 8px;
     }
 
+    @keyframes ble-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .ble-spinner {
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid rgba(0, 184, 255, 0.2);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: ble-spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+
     .ble-connect-area {
       display: flex;
       align-items: center;
@@ -1274,7 +1290,9 @@
         <!-- Connected: file list -->
         <div id="ble-connected-area" style="display:none;flex-direction:column;gap:10px;margin-top:12px">
           <div class="ble-file-list" id="ble-file-list">
-            <div class="ble-empty" id="ble-file-empty"><span>🔄</span>Fetching file list…</div>
+            <div class="ble-empty" id="ble-file-empty">
+              <div class="ble-spinner"></div>Requesting file list from device…
+            </div>
           </div>
           <div id="ble-status"></div>
           <div class="ble-progress" id="ble-progress">
@@ -1754,6 +1772,21 @@
       el.className = isError ? 'error' : '';
     }
 
+    function showBLEConnectingUI(deviceName) {
+      document.getElementById('ble-connect-area').style.display = 'none';
+      var area = document.getElementById('ble-connected-area');
+      area.style.display = 'flex';
+      area.style.flexDirection = 'column';
+      area.style.gap = '12px';
+      document.getElementById('ble-device-name').textContent = deviceName;
+      document.getElementById('ble-header-dot').className = 'ble-dot';
+      document.getElementById('ble-card').className = 'panel-card ble-card';
+      var list = document.getElementById('ble-file-list');
+      list.innerHTML = '<div class="ble-empty"><div class="ble-spinner"></div>Connecting to device…</div>';
+      document.getElementById('ble-refresh-btn').disabled = true;
+      document.getElementById('ble-load-btn').disabled = true;
+    }
+
     function showBLEConnectedUI(deviceName) {
       document.getElementById('ble-connect-area').style.display = 'none';
       var area = document.getElementById('ble-connected-area');
@@ -1763,6 +1796,7 @@
       document.getElementById('ble-device-name').textContent = deviceName;
       document.getElementById('ble-header-dot').className = 'ble-dot connected';
       document.getElementById('ble-card').className = 'panel-card ble-card connected';
+      document.getElementById('ble-refresh-btn').disabled = false;
       // Dashboard badge
       var badge = document.getElementById('ble-header-badge');
       if (badge) {
@@ -1861,8 +1895,9 @@
       bleRxFrameBuffer = new Uint8Array(0);
       bleAvailableFiles = [];
       bleSelectedFileIndex = -1;
-      renderBLEFileCards();
-      setBLEStatus('Fetching file list…');
+      var list = document.getElementById('ble-file-list');
+      list.innerHTML = '<div class="ble-empty"><div class="ble-spinner"></div>Requesting file list from device…</div>';
+      setBLEStatus('');
       await writeBLECommand(new Uint8Array([bleProto.marker, bleProto.cmdRequestFileList, 1, 1]));
     }
 
@@ -1987,9 +2022,10 @@
         document.getElementById('ble-connect-btn').disabled = true;
         resetBLEDownloadState();
         bleDevice = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
+          filters: [{ namePrefix: 'POD' }],
           optionalServices: [bleConfig.serviceUuid]
         });
+        showBLEConnectingUI(bleDevice.name || 'BLE Device');
         bleDevice.addEventListener('gattserverdisconnected', function () {
           bleNotifyCharacteristic = null;
           bleWriteCharacteristic = null;
