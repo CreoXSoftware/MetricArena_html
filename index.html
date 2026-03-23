@@ -947,9 +947,16 @@
     .heatmap-controls {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px 16px;
       margin-top: 12px;
       flex-wrap: wrap;
+    }
+
+    .heatmap-controls .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
     }
 
     .heatmap-controls label {
@@ -959,7 +966,7 @@
 
     .heatmap-controls input[type="range"] {
       accent-color: var(--accent);
-      width: 180px;
+      width: 100px;
     }
 
     /* Charts */
@@ -1467,10 +1474,22 @@
           <div id="map"></div>
         </div>
         <div class="heatmap-controls">
-          <label>Radius: <span id="radius-val">15</span></label>
-          <input type="range" id="heat-radius" min="5" max="50" value="15">
-          <label>Intensity: <span id="intensity-val">0.8</span></label>
-          <input type="range" id="heat-intensity" min="1" max="20" value="8">
+          <div class="ctrl-group">
+            <label>Heat:</label>
+            <select id="heat-mode" style="background:var(--surface);color:var(--text);border:1px solid #333;border-radius:4px;padding:2px 6px;font-size:13px;">
+              <option value="density">Density</option>
+              <option value="speed">Speed</option>
+              <option value="accel">Acceleration</option>
+            </select>
+          </div>
+          <div class="ctrl-group">
+            <label>Radius: <span id="radius-val">15</span></label>
+            <input type="range" id="heat-radius" min="5" max="50" value="15">
+          </div>
+          <div class="ctrl-group">
+            <label>Intensity: <span id="intensity-val">0.8</span></label>
+            <input type="range" id="heat-intensity" min="1" max="20" value="8">
+          </div>
         </div>
       </div>
 
@@ -1532,6 +1551,7 @@
     var processedData = null;
     var map = null;
     var heatLayer = null;
+    var polylineLayer = null;
     var splits = [];
     var selStart = null, selEnd = null;
     var isDragging = false;
@@ -2239,7 +2259,7 @@
       var d = sessionData.map(function (r) {
         return {
           tick: parseFloat(r.kernelTick),
-          ts: new Date(+r.year, +r.month - 1, +r.day, +r.hour, +r.minute, +r.second, +r.millisecond),
+          ts: new Date(Date.UTC(+r.year, +r.month - 1, +r.day, +r.hour, +r.minute, +r.second, +r.millisecond)),
           lat: parseFloat(r.latitude),
           lon: parseFloat(r.longitude),
           speed: parseFloat(r.speed_kph),
@@ -2607,13 +2627,6 @@
         attribution: '&copy; CartoDB', maxZoom: 20
       }).addTo(map);
 
-      var heatPoints = processedData.map(function (d) { return [d.lat, d.lon, 0.8]; });
-      heatLayer = L.heatLayer(heatPoints, {
-        radius: 15, blur: 12, maxZoom: 20,
-        gradient: { 0.2: '#0a0a6b', 0.4: '#00b8ff', 0.6: '#00e5a0', 0.8: '#ffaa00', 1.0: '#ff6b6b' }
-      }).addTo(map);
-
-      L.polyline(processedData.map(function (d) { return [d.lat, d.lon]; }), { color: '#00e5a080', weight: 2 }).addTo(map);
 
       document.getElementById('heat-radius').oninput = function () {
         document.getElementById('radius-val').textContent = this.value; updateHeatmap();
@@ -2621,6 +2634,8 @@
       document.getElementById('heat-intensity').oninput = function () {
         document.getElementById('intensity-val').textContent = (this.value / 10).toFixed(1); updateHeatmap();
       };
+      document.getElementById('heat-mode').onchange = function () { updateHeatmap(); };
+      updateHeatmap();
       setTimeout(function () { if (map) map.invalidateSize(); }, 300);
       setTimeout(function () { if (map) map.invalidateSize(); }, 800);
     }
@@ -2628,9 +2643,22 @@
     function updateHeatmap() {
       var radius = +document.getElementById('heat-radius').value;
       var intensity = +document.getElementById('heat-intensity').value / 10;
+      var mode = document.getElementById('heat-mode').value;
       if (heatLayer) map.removeLayer(heatLayer);
-      heatLayer = L.heatLayer(processedData.map(function (d) { return [d.lat, d.lon, intensity]; }), {
-        radius: radius, blur: Math.max(1, radius * 0.8), maxZoom: 20,
+      if (polylineLayer) map.removeLayer(polylineLayer);
+      var viewData = processedData.filter(function (d) { return d.t >= chartView.tStart && d.t <= chartView.tEnd; });
+      polylineLayer = L.polyline(viewData.map(function (d) { return [d.lat, d.lon]; }), { color: '#00e5a080', weight: 2 }).addTo(map);
+      var heatPoints;
+      if (mode === 'density') {
+        heatPoints = viewData.map(function (d) { return [d.lat, d.lon, Math.min(1, intensity)]; });
+      } else {
+        var field = mode === 'speed' ? 'speed' : 'linMag';
+        var vals = viewData.map(function (d) { return d[field]; });
+        var maxVal = Math.max.apply(null, vals) || 1;
+        heatPoints = viewData.map(function (d, i) { return [d.lat, d.lon, Math.min(1, (vals[i] / maxVal) * intensity)]; });
+      }
+      heatLayer = L.heatLayer(heatPoints, {
+        radius: radius, blur: Math.max(1, radius * 0.8), maxZoom: 20, max: 1.0,
         gradient: { 0.2: '#0a0a6b', 0.4: '#00b8ff', 0.6: '#00e5a0', 0.8: '#ffaa00', 1.0: '#ff6b6b' }
       }).addTo(map);
     }
@@ -3331,6 +3359,7 @@
       clearSelection();
       renderAccelChart();
       renderSpeedChart();
+      updateHeatmap();
     }
 
     function resetZoom() {
@@ -3339,6 +3368,7 @@
       clearSelection();
       renderAccelChart();
       renderSpeedChart();
+      updateHeatmap();
     }
 
     function initChartZoom() {
